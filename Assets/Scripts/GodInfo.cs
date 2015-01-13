@@ -12,11 +12,15 @@ public class GodInfo : MonoBehaviour
 		AIController controller = GetComponent<AIController>();
 		
 		TreeNode moveNode = new MoveToDestination();
-		TreeNode collectNode = new CollectResource();
+		TreeNode collectNode = new CollectAdjacentResources();
+		TreeNode findResource = new ChooseResourceTarget();
 
-		TreeNode[] parallelNodes = { moveNode, collectNode };
-		TreeNode parallel = new Parallel( parallelNodes );
+		TreeNode[] sequenceNodes = { findResource, moveNode, collectNode };
+		TreeNode sequence = new Sequence( sequenceNodes );
 
-		controller.SetRoot( parallel );
+		Decorator repeat = new RepeatUntilFail();
+		repeat.child = sequence;
+
+		controller.SetRoot( repeat );
 	}
 }
