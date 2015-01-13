@@ -102,6 +102,7 @@ public class ChooseResourceTarget : TreeNode
 		gameObject = (GameObject)data["gameObject"];
 		transform = gameObject.GetComponent<Transform>();
 		info = gameObject.GetComponent<GodInfo>();
+		_status = NodeStatus.RUNNING;
 	}
 
 	public override void Tick()
@@ -122,5 +123,27 @@ public class ChooseResourceTarget : TreeNode
 				info.destination = resourceTransform;
 			}
 		}
+	}
+}
+
+public class CheckForNearbyGods : TreeNode
+{
+	private NodeStatus _status = NodeStatus.RUNNING;
+
+	public override NodeStatus status
+	{
+		get
+		{
+			return NodeStatus.SUCCESS;
+		}
+	}
+
+	public override void Init( Hashtable data )
+	{
+		_status = NodeStatus.RUNNING;
+	}
+
+	public override void Tick()
+	{
 	}
 }

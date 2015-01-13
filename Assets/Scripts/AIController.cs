@@ -45,6 +45,9 @@ public abstract class TreeNode
 {
 	public TreeNode parent;
 
+	/**
+	 * @todo remove TreeNode.status and have Tick() return the status instead.
+	 */
 	public abstract NodeStatus status
 	{
 		get;
@@ -84,14 +87,20 @@ public abstract class Compositor : TreeNode
 
 public class RepeatUntilFail : Decorator
 {
-	private NodeStatus _status = NodeStatus.RUNNING;
 	private Hashtable _data;
 
 	public override NodeStatus status
 	{
 		get
 		{
-			return _status;
+			if ( child.status == NodeStatus.FAILURE )
+			{
+				return NodeStatus.SUCCESS;
+			}
+			else
+			{
+				return NodeStatus.RUNNING;
+			}
 		}
 	}
 
@@ -99,21 +108,16 @@ public class RepeatUntilFail : Decorator
 	{
 		base.Init( data );
 		_data = data;
-		_status = NodeStatus.RUNNING;
 	}
 
 	public override void Tick()
 	{
 		child.Tick();
 
-		switch ( child.status )
+		if ( child.status == NodeStatus.SUCCESS )
 		{
-			case NodeStatus.SUCCESS:
-				child.Init( _data ); // restart child
-				break;
-			case NodeStatus.FAILURE:
-				_status = NodeStatus.SUCCESS;
-				break;
+			// restart child when it completes
+			child.Init( _data );
 		}
 	}
 }
@@ -181,6 +185,8 @@ public class Sequence : Compositor
 
 public class SequenceParallel : Compositor
 {
+	private NodeStatus _status = NodeStatus.RUNNING;
+
 	public SequenceParallel( TreeNode[] childs )
 		: base( childs )
 	{
@@ -190,8 +196,14 @@ public class SequenceParallel : Compositor
 	{
 		get
 		{
-			return NodeStatus.RUNNING; // TODO return an actual
+			return _status; // TODO return an actual
 		}
+	}
+
+	public override void Init( Hashtable data )
+	{
+		base.Init( data );
+		_status = NodeStatus.RUNNING;
 	}
 
 	public override void Tick()
@@ -200,7 +212,21 @@ public class SequenceParallel : Compositor
 		{
 			child.Tick();
 
-			// TODO check the status of each child and stop if there's a failure.
+			_status = NodeStatus.SUCCESS;
+			switch ( child.status )
+			{
+				case NodeStatus.FAILURE:
+					_status = NodeStatus.FAILURE;
+					return;
+				case NodeStatus.RUNNING:
+					// what do we do when one of our children finishes before the others?
+					// for now make the status success and continue running other children.
+					if ( _status != NodeStatus.FAILURE )
+					{
+						_status = NodeStatus.RUNNING;
+					}
+					break;
+			}
 		}
 	}
 }

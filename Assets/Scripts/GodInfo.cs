@@ -11,15 +11,20 @@ public class GodInfo : MonoBehaviour
 	{
 		AIController controller = GetComponent<AIController>();
 		
+		// FIND RESOURCES
 		TreeNode moveNode = new MoveToDestination();
 		TreeNode collectNode = new CollectAdjacentResources();
 		TreeNode findResource = new ChooseResourceTarget();
+		TreeNode[] collectResources_Nodes = { findResource, moveNode, collectNode };
+		TreeNode collectResources = new Sequence( collectResources_Nodes );
 
-		TreeNode[] sequenceNodes = { findResource, moveNode, collectNode };
-		TreeNode sequence = new Sequence( sequenceNodes );
+		// CHECK AND COLLECT
+		TreeNode checkForGods = new CheckForNearbyGods();
+		TreeNode[] checkAndCollect_Nodes = { checkForGods, collectResources };
+		TreeNode checkAndCollect = new SequenceParallel( checkAndCollect_Nodes );
 
 		Decorator repeat = new RepeatUntilFail();
-		repeat.child = sequence;
+		repeat.child = checkAndCollect;
 
 		controller.SetRoot( repeat );
 	}
