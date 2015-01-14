@@ -148,6 +148,66 @@ public class Invert : Decorator
 	}
 }
 
+public class Succeed : Decorator
+{
+	private NodeStatus _status = NodeStatus.RUNNING;
+
+	public Succeed( TreeNode child )
+		: base( child )
+	{
+	}
+
+	public override NodeStatus status
+	{
+		get { return _status; }
+	}
+
+	public override void Init( Hashtable data )
+	{
+		base.Init( data );
+		_status = NodeStatus.RUNNING;
+	}
+
+	public override void Tick()
+	{
+		child.Tick();
+		if ( child.status != NodeStatus.RUNNING )
+		{
+			_status = NodeStatus.SUCCESS;
+		}
+	}
+}
+
+public class Fail : Decorator
+{
+	private NodeStatus _status = NodeStatus.RUNNING;
+
+	public Fail( TreeNode child )
+		: base( child )
+	{
+	}
+
+	public override NodeStatus status
+	{
+		get { return _status; }
+	}
+
+	public override void Init( Hashtable data )
+	{
+		base.Init( data );
+		_status = NodeStatus.RUNNING;
+	}
+
+	public override void Tick()
+	{
+		child.Tick();
+		if ( child.status != NodeStatus.RUNNING )
+		{
+			_status = NodeStatus.FAILURE;
+		}
+	}
+}
+
 #endregion
 
 #region Compositors

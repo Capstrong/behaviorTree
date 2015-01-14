@@ -20,8 +20,8 @@ public class GodInfo : MonoBehaviour
 		TreeNode collectResources = new Sequence( collectResources_Nodes );
 
 		// CHECK AND COLLECT
-		TreeNode checkForGods = new Invert( new GodsWithinWatchDistance() );
-		TreeNode[] checkAndCollect_Nodes = { checkForGods, collectResources };
+		TreeNode checkForNoGods = new Invert( new GodsWithinWatchDistance() );
+		TreeNode[] checkAndCollect_Nodes = { checkForNoGods, collectResources };
 		TreeNode checkAndCollect = new SequenceParallel( checkAndCollect_Nodes );
 
 		// FIGHT DEM GODS
@@ -34,7 +34,9 @@ public class GodInfo : MonoBehaviour
 		TreeNode[] fightGods_Nodes = { godsPresent, chaseSequence };
 		TreeNode fightGods = new SequenceParallel( fightGods_Nodes );
 
-		TreeNode[] mainSequence = { fightGods, checkAndCollect };
+		TreeNode[] mainSequence = { new Fail( fightGods ),
+		                            new Fail( checkAndCollect ),
+		                            new ResourcesPresent() };
 		TreeNode repeat = new RepeatUntilFail( new Selector( mainSequence ) );
 		controller.SetRoot( repeat );
 	}

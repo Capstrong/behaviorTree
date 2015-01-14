@@ -89,10 +89,35 @@ public class CollectAdjacentResources : TreeNode
  * @details
  *     Status is SUCCESS if resources exist, FAILURE otherwise.
  */
-//public class ResourcesPresent : TreeNode
-//{
+public class ResourcesPresent : TreeNode
+{
+	private NodeStatus _status = NodeStatus.RUNNING;
 
-//}
+	public override NodeStatus status
+	{
+		get
+		{
+			return _status;
+		}
+	}
+
+	public override void Init( Hashtable data )
+	{
+		_status = NodeStatus.RUNNING;
+	}
+
+	public override void Tick()
+	{
+		if ( GameObject.FindGameObjectsWithTag( "Resource" ).Length > 0 )
+		{
+			_status = NodeStatus.SUCCESS;
+		}
+		else
+		{
+			_status = NodeStatus.FAILURE;
+		}
+	}
+}
 
 public class ChooseResourceTarget : TreeNode
 {
