@@ -6,6 +6,7 @@ public class GodInfo : MonoBehaviour
 	public Transform destination;
 	public int resources;
 	public float resourceCollectionDistance;
+	public float watchDistance;
 
 	public void Start()
 	{
@@ -19,13 +20,22 @@ public class GodInfo : MonoBehaviour
 		TreeNode collectResources = new Sequence( collectResources_Nodes );
 
 		// CHECK AND COLLECT
-		TreeNode checkForGods = new CheckForNearbyGods();
+		TreeNode checkForGods = new Invert( new GodsWithinWatchDistance() );
 		TreeNode[] checkAndCollect_Nodes = { checkForGods, collectResources };
 		TreeNode checkAndCollect = new SequenceParallel( checkAndCollect_Nodes );
 
-		Decorator repeat = new RepeatUntilFail();
-		repeat.child = checkAndCollect;
+		// FIGHT DEM GODS
+		TreeNode chooseGodToChase = new ChooseTargetGod();
+		TreeNode chaseGod = new MoveToDestination();
+		TreeNode[] chaseSequence_Nodes = { chooseGodToChase, chaseGod };
+		TreeNode chaseSequence = new Sequence( chaseSequence_Nodes );
 
+		TreeNode godsPresent = new GodsWithinWatchDistance();
+		TreeNode[] fightGods_Nodes = { godsPresent, chaseSequence };
+		TreeNode fightGods = new SequenceParallel( fightGods_Nodes );
+
+		TreeNode[] mainSequence = { fightGods, checkAndCollect };
+		TreeNode repeat = new RepeatUntilFail( new Selector( mainSequence ) );
 		controller.SetRoot( repeat );
 	}
 }

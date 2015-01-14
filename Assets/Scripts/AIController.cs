@@ -57,9 +57,16 @@ public abstract class TreeNode
 	public abstract void Tick();
 }
 
+#region Decorators
+
 public abstract class Decorator : TreeNode
 {
 	public TreeNode child;
+
+	public Decorator( TreeNode child )
+	{
+		this.child = child;
+	}
 
 	public override void Init( Hashtable data )
 	{
@@ -67,27 +74,14 @@ public abstract class Decorator : TreeNode
 	}
 }
 
-public abstract class Compositor : TreeNode
-{
-	public List<TreeNode> children;
-
-	public Compositor( TreeNode[] childs )
-	{
-		children = new List<TreeNode>( childs );
-	}
-
-	public override void Init( Hashtable data )
-	{
-		foreach ( TreeNode child in children )
-		{
-			child.Init( data );
-		}
-	}
-}
-
 public class RepeatUntilFail : Decorator
 {
 	private Hashtable _data;
+
+	public RepeatUntilFail( TreeNode child )
+		: base( child )
+	{
+	}
 
 	public override NodeStatus status
 	{
@@ -112,12 +106,66 @@ public class RepeatUntilFail : Decorator
 
 	public override void Tick()
 	{
+		Debug.Log( "Ticking: " + this );
+
 		child.Tick();
 
 		if ( child.status == NodeStatus.SUCCESS )
 		{
 			// restart child when it completes
 			child.Init( _data );
+		}
+	}
+}
+
+public class Invert : Decorator
+{
+	public override NodeStatus status
+	{
+		get
+		{
+			switch ( child.status )
+			{
+				case NodeStatus.FAILURE:
+					return NodeStatus.SUCCESS;
+				case NodeStatus.SUCCESS:
+					return NodeStatus.FAILURE;
+			}
+			return NodeStatus.RUNNING;
+		}
+	}
+
+	public Invert( TreeNode child )
+		: base( child )
+	{
+	}
+
+	public override void Tick()
+	{
+		Debug.Log( "Ticking: " + this );
+
+		child.Tick();
+	}
+}
+
+#endregion
+
+#region Compositors
+
+public abstract class Compositor : TreeNode
+{
+	public List<TreeNode> children;
+
+	public Compositor( TreeNode[] childs )
+	{
+		children = new List<TreeNode>( childs );
+	}
+
+	public override void Init( Hashtable data )
+	{
+		foreach ( TreeNode child in children )
+		{
+			child.Init( data );
 		}
 	}
 }
@@ -159,6 +207,8 @@ public class Sequence : Compositor
 
 	public override void Tick()
 	{
+		Debug.Log( "Ticking: " + this );
+
 		children[currentChild].Tick();
 
 		// check child status and act as necessary
@@ -208,6 +258,8 @@ public class SequenceParallel : Compositor
 
 	public override void Tick()
 	{
+		Debug.Log( "Ticking: " + this );
+
 		foreach ( TreeNode child in children )
 		{
 			child.Tick();
@@ -230,3 +282,53 @@ public class SequenceParallel : Compositor
 		}
 	}
 }
+
+public class Selector : Compositor
+{
+	private NodeStatus _status = NodeStatus.RUNNING;
+	private int _currentChild = 0;
+
+	public Selector( TreeNode[] childs )
+		: base( childs )
+	{
+	}
+
+	public override NodeStatus status
+	{
+		get
+		{
+			return _status;
+		}
+	}
+
+	public override void Init( Hashtable data )
+	{
+		base.Init( data );
+		_status = NodeStatus.RUNNING;
+		_currentChild = 0;
+	}
+
+	public override void Tick()
+	{
+		Debug.Log( "Ticking: " + this );
+
+		children[_currentChild].Tick();
+
+		switch ( children[_currentChild].status )
+		{
+			case NodeStatus.SUCCESS:
+				_status = NodeStatus.SUCCESS;
+				return;
+			case NodeStatus.FAILURE:
+				++_currentChild;
+				if ( _currentChild >= children.Count )
+				{
+					_status = NodeStatus.FAILURE;
+					return;
+				}
+				break;
+		}
+	}
+}
+
+#endregion
