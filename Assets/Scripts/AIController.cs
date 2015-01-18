@@ -16,13 +16,10 @@ public class AIController : MonoBehaviour
 
 	void Update()
 	{
-		if ( _treeRoot.status == NodeStatus.RUNNING )
+		NodeStatus status = _treeRoot.Tick();
+		if ( status != NodeStatus.RUNNING )
 		{
-			_treeRoot.Tick();
-		}
-		else
-		{
-			Debug.Log( "Behavior tree completed, root finished with value " + _treeRoot.status );
+			Debug.Log( "Behavior tree completed, root finished with value " + status );
 			Destroy( this );
 		}
 	}
@@ -45,16 +42,8 @@ public abstract class TreeNode
 {
 	public TreeNode parent;
 
-	/**
-	 * @todo remove TreeNode.status and have Tick() return the status instead.
-	 */
-	public abstract NodeStatus status
-	{
-		get;
-	}
-
 	public abstract void Init( Hashtable data );
-	public abstract void Tick();
+	public abstract NodeStatus Tick();
 }
 
 #region Decorators
@@ -83,127 +72,96 @@ public class RepeatUntilFail : Decorator
 	{
 	}
 
-	public override NodeStatus status
-	{
-		get
-		{
-			if ( child.status == NodeStatus.FAILURE )
-			{
-				return NodeStatus.SUCCESS;
-			}
-			else
-			{
-				return NodeStatus.RUNNING;
-			}
-		}
-	}
-
 	public override void Init( Hashtable data )
 	{
 		base.Init( data );
 		_data = data;
 	}
 
-	public override void Tick()
+	public override NodeStatus Tick()
 	{
 		Debug.Log( "Ticking: " + this );
 
-		child.Tick();
-
-		if ( child.status == NodeStatus.SUCCESS )
+		switch ( child.Tick() )
 		{
-			// restart child when it completes
-			child.Init( _data );
+			case NodeStatus.FAILURE:
+				return NodeStatus.SUCCESS;
+			case NodeStatus.SUCCESS:
+				child.Init( _data );
+				return NodeStatus.RUNNING;
+			case NodeStatus.RUNNING:
+			default:
+				return NodeStatus.RUNNING;
 		}
 	}
 }
 
 public class Invert : Decorator
 {
-	public override NodeStatus status
-	{
-		get
-		{
-			switch ( child.status )
-			{
-				case NodeStatus.FAILURE:
-					return NodeStatus.SUCCESS;
-				case NodeStatus.SUCCESS:
-					return NodeStatus.FAILURE;
-			}
-			return NodeStatus.RUNNING;
-		}
-	}
-
 	public Invert( TreeNode child )
 		: base( child )
 	{
 	}
 
-	public override void Tick()
+	public override NodeStatus Tick()
 	{
 		Debug.Log( "Ticking: " + this );
 
-		child.Tick();
+		switch ( child.Tick() )
+		{
+			case NodeStatus.SUCCESS:
+				return NodeStatus.FAILURE;
+			case NodeStatus.FAILURE:
+				return NodeStatus.SUCCESS;
+			case NodeStatus.RUNNING:
+			default:
+				return NodeStatus.RUNNING;
+		}
 	}
 }
 
 public class Succeed : Decorator
 {
-	private NodeStatus _status = NodeStatus.RUNNING;
-
 	public Succeed( TreeNode child )
 		: base( child )
 	{
 	}
 
-	public override NodeStatus status
+	public override NodeStatus Tick()
 	{
-		get { return _status; }
-	}
+		Debug.Log( "Ticking: " + this );
 
-	public override void Init( Hashtable data )
-	{
-		base.Init( data );
-		_status = NodeStatus.RUNNING;
-	}
-
-	public override void Tick()
-	{
-		child.Tick();
-		if ( child.status != NodeStatus.RUNNING )
+		switch ( child.Tick() )
 		{
-			_status = NodeStatus.SUCCESS;
+			case NodeStatus.FAILURE:
+			case NodeStatus.SUCCESS:
+				return NodeStatus.SUCCESS;
+			case NodeStatus.RUNNING:
+			default:
+				return NodeStatus.RUNNING;
 		}
 	}
 }
 
 public class Fail : Decorator
 {
-	private NodeStatus _status = NodeStatus.RUNNING;
-
 	public Fail( TreeNode child )
 		: base( child )
 	{
 	}
 
-	public override NodeStatus status
+	public override NodeStatus Tick()
 	{
-		get { return _status; }
-	}
+		Debug.Log( "Ticking: " + this );
 
-	public override void Init( Hashtable data )
-	{
-		base.Init( data );
-		_status = NodeStatus.RUNNING;
-	}
-
-	public override void Tick()
-	{
-		child.Tick();
-		if ( child.status != NodeStatus.RUNNING )
+		switch ( child.Tick() )
 		{
-			_status = NodeStatus.FAILURE;
+			case NodeStatus.SUCCESS:
+			case NodeStatus.FAILURE:
+				return NodeStatus.FAILURE;
+			case NodeStatus.RUNNING:
+			default:
+				return NodeStatus.RUNNING;
 		}
 	}
 }
@@ -233,20 +191,11 @@ public abstract class Compositor : TreeNode
 public class Sequence : Compositor
 {
 	private int currentChild;
-	private NodeStatus _status = NodeStatus.RUNNING;
 	private Hashtable _data;
 
 	public Sequence( TreeNode[] nodes )
 		: base( nodes )
 	{
-	}
-
-	public override NodeStatus status
-	{
-		get
-		{
-			return _status;
-		}
 	}
 
 	/**
@@ -262,90 +211,78 @@ public class Sequence : Compositor
 		_data = data;
 		currentChild = 0;
 		children[currentChild].Init( _data );
-		_status = NodeStatus.RUNNING;
 	}
 
-	public override void Tick()
+	public override NodeStatus Tick()
 	{
 		Debug.Log( "Ticking: " + this );
 
-		children[currentChild].Tick();
-
 		// check child status and act as necessary
-		switch (children[currentChild].status)
+		switch ( children[currentChild].Tick() )
 		{
 			case NodeStatus.SUCCESS:
 				++currentChild;
 				if ( currentChild >= children.Count )
 				{
-					_status = NodeStatus.SUCCESS;
+					return NodeStatus.SUCCESS;
 				}
 				else
 				{
 					children[currentChild].Init( _data );
+					return NodeStatus.RUNNING;
 				}
-				break;
 			case NodeStatus.FAILURE:
-				_status = NodeStatus.FAILURE;
-				currentChild = 0;
-				break;
+				return NodeStatus.FAILURE;
+			default:
+			case NodeStatus.RUNNING:
+				return NodeStatus.RUNNING;
 		}
 	}
 }
 
 public class SequenceParallel : Compositor
 {
-	private NodeStatus _status = NodeStatus.RUNNING;
+	private Hashtable _data;
 
 	public SequenceParallel( TreeNode[] childs )
 		: base( childs )
 	{
 	}
 
-	public override NodeStatus status
-	{
-		get
-		{
-			return _status; // TODO return an actual
-		}
-	}
-
 	public override void Init( Hashtable data )
 	{
 		base.Init( data );
-		_status = NodeStatus.RUNNING;
+		_data = data;
 	}
 
-	public override void Tick()
+	public override NodeStatus Tick()
 	{
 		Debug.Log( "Ticking: " + this );
 
+		int successes = 0;
 		foreach ( TreeNode child in children )
 		{
-			child.Tick();
-
-			_status = NodeStatus.SUCCESS;
-			switch ( child.status )
+			switch ( child.Tick() )
 			{
 				case NodeStatus.FAILURE:
-					_status = NodeStatus.FAILURE;
-					return;
+					return NodeStatus.FAILURE;
+				case NodeStatus.SUCCESS:
+					// if all children succeed at once then we win forever
+					++successes;
+					child.Init( _data );
+					if ( successes == children.Count ) return NodeStatus.SUCCESS;
+					break;
 				case NodeStatus.RUNNING:
-					// what do we do when one of our children finishes before the others?
-					// for now make the status success and continue running other children.
-					if ( _status != NodeStatus.FAILURE )
-					{
-						_status = NodeStatus.RUNNING;
-					}
+				default:
 					break;
 			}
 		}
+		return NodeStatus.RUNNING;
 	}
 }
 
 public class Selector : Compositor
 {
-	private NodeStatus _status = NodeStatus.RUNNING;
 	private int _currentChild = 0;
 
 	public Selector( TreeNode[] childs )
@@ -353,40 +290,27 @@ public class Selector : Compositor
 	{
 	}
 
-	public override NodeStatus status
-	{
-		get
-		{
-			return _status;
-		}
-	}
-
 	public override void Init( Hashtable data )
 	{
 		base.Init( data );
-		_status = NodeStatus.RUNNING;
 		_currentChild = 0;
 	}
 
-	public override void Tick()
+	public override NodeStatus Tick()
 	{
 		Debug.Log( "Ticking: " + this );
 
-		children[_currentChild].Tick();
-
-		switch ( children[_currentChild].status )
+		switch ( children[_currentChild].Tick() )
 		{
 			case NodeStatus.SUCCESS:
-				_status = NodeStatus.SUCCESS;
-				return;
+				return NodeStatus.SUCCESS;
 			case NodeStatus.FAILURE:
 				++_currentChild;
-				if ( _currentChild >= children.Count )
-				{
-					_status = NodeStatus.FAILURE;
-					return;
-				}
-				break;
+				if ( _currentChild >= children.Count ) return NodeStatus.FAILURE;
+				return NodeStatus.RUNNING;
+			case NodeStatus.RUNNING:
+			default:
+				return NodeStatus.RUNNING;
 		}
 	}
 }

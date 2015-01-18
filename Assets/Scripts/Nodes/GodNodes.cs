@@ -3,26 +3,9 @@ using System.Collections;
 
 public class MoveToDestination : TreeNode
 {
-	public Transform destination;
-
 	private GameObject gameObject;
 	private Transform transform;
 	private GodInfo info;
-
-	public override NodeStatus status
-	{
-		get
-		{
-			if ( Vector3.Distance( transform.position, destination.position ) < 0.1f )
-			{
-				return NodeStatus.SUCCESS;
-			}
-			else
-			{
-				return NodeStatus.RUNNING;
-			}
-		}
-	}
 
 	public override void Init( Hashtable data )
 	{
@@ -31,12 +14,21 @@ public class MoveToDestination : TreeNode
 		info = gameObject.GetComponent<GodInfo>();
 	}
 
-	public override void Tick()
+	public override NodeStatus Tick()
 	{
 		Debug.Log( "Ticking: " + this );
-		destination = info.destination; // I guess retrieve the destination every tick because we're dumb
-		Vector3 direction = destination.position - transform.position;
+
+		Vector3 direction = info.destination.position - transform.position;
 		transform.Translate( direction.normalized * 10.0f * Time.deltaTime );
+
+		if ( Vector3.Distance( transform.position, info.destination.position ) < 0.5f )
+		{
+			return NodeStatus.SUCCESS;
+		}
+		else
+		{
+			return NodeStatus.RUNNING;
+		}
 	}
 }
 
@@ -46,16 +38,6 @@ public class CollectAdjacentResources : TreeNode
 	private GameObject gameObject;
 	private Transform transform;
 
-	private NodeStatus _status = NodeStatus.RUNNING;
-
-	public override NodeStatus status
-	{
-		get
-		{
-			return _status;
-		}
-	}
-
 	public override void Init( Hashtable data )
 	{
 		gameObject = (GameObject)data["gameObject"];
@@ -63,11 +45,9 @@ public class CollectAdjacentResources : TreeNode
 		info = gameObject.GetComponent<GodInfo>();
 	}
 
-	public override void Tick()
+	public override NodeStatus Tick()
 	{
 		Debug.Log( "Ticking: " + this );
-		// default to failure
-		_status = NodeStatus.FAILURE;
 
 		foreach ( GameObject resource in GameObject.FindGameObjectsWithTag( "Resource" ) )
 		{
@@ -77,9 +57,11 @@ public class CollectAdjacentResources : TreeNode
 				// collect resource
 				++info.resources;
 				GameObject.Destroy( resource );
-				_status = NodeStatus.SUCCESS;
+				return NodeStatus.SUCCESS;
 			}
 		}
+
+		return NodeStatus.FAILURE;
 	}
 }
 
@@ -91,30 +73,21 @@ public class CollectAdjacentResources : TreeNode
  */
 public class ResourcesPresent : TreeNode
 {
-	private NodeStatus _status = NodeStatus.RUNNING;
-
-	public override NodeStatus status
-	{
-		get
-		{
-			return _status;
-		}
-	}
-
 	public override void Init( Hashtable data )
 	{
-		_status = NodeStatus.RUNNING;
 	}
 
-	public override void Tick()
+	public override NodeStatus Tick()
 	{
+		Debug.Log( "Ticking: " + this );
+
 		if ( GameObject.FindGameObjectsWithTag( "Resource" ).Length > 0 )
 		{
-			_status = NodeStatus.SUCCESS;
+			return NodeStatus.SUCCESS;
 		}
 		else
 		{
-			_status = NodeStatus.FAILURE;
+			return NodeStatus.FAILURE;
 		}
 	}
 }
@@ -125,32 +98,22 @@ public class ChooseResourceTarget : TreeNode
 	private Transform transform;
 	private GodInfo info;
 
-	private NodeStatus _status = NodeStatus.RUNNING;
-
-	public override NodeStatus status
-	{
-		get
-		{
-			return _status;
-		}
-	}
-
 	public override void Init( Hashtable data )
 	{
 		gameObject = (GameObject)data["gameObject"];
 		transform = gameObject.GetComponent<Transform>();
 		info = gameObject.GetComponent<GodInfo>();
-		_status = NodeStatus.RUNNING;
 	}
 
-	public override void Tick()
+	public override NodeStatus Tick()
 	{
 		Debug.Log( "Ticking: " + this );
-		_status = NodeStatus.FAILURE;
+
 		info.destination = null;
+		NodeStatus status = NodeStatus.FAILURE;
 		foreach ( GameObject resource in GameObject.FindGameObjectsWithTag( "Resource" ) )
 		{
-			_status = NodeStatus.SUCCESS;
+			status = NodeStatus.SUCCESS;
 			Transform resourceTransform = resource.GetComponent<Transform>();
 			if ( info.destination == null )
 			{
@@ -162,6 +125,7 @@ public class ChooseResourceTarget : TreeNode
 				info.destination = resourceTransform;
 			}
 		}
+		return status;
 	}
 }
 
@@ -173,79 +137,57 @@ public class ChooseResourceTarget : TreeNode
  */
 public class GodsWithinWatchDistance : TreeNode
 {
-	private NodeStatus _status = NodeStatus.RUNNING;
 	private Transform transform;
 	private GodInfo info;
 
-	public override NodeStatus status
-	{
-		get
-		{
-			return _status;
-		}
-	}
-
 	public override void Init( Hashtable data )
 	{
-		_status = NodeStatus.RUNNING;
 		GameObject gameObject = (GameObject)data["gameObject"];
 		transform = gameObject.GetComponent<Transform>();
 		info = gameObject.GetComponent<GodInfo>();
 	}
 
-	public override void Tick()
+	public override NodeStatus Tick()
 	{
 		Debug.Log( "Ticking: " + this );
-		_status = NodeStatus.FAILURE;
+
 		foreach ( GameObject god in GameObject.FindGameObjectsWithTag( "Enemy God" ) )
 		{
 			if ( ( transform.position - god.GetComponent<Transform>().position )
 				.sqrMagnitude < info.watchDistance * info.watchDistance )
 			{
-				_status = NodeStatus.SUCCESS;
-				Debug.Log( "GOD NEARBY OH NO" );
-				return;
+				return NodeStatus.SUCCESS;
 			}
 		}
+		return NodeStatus.FAILURE;
 	}
 }
 
 public class ChooseTargetGod : TreeNode
 {
-	private NodeStatus _status = NodeStatus.RUNNING;
 	private Transform transform;
 	private GodInfo info;
 
-	public override NodeStatus status
-	{
-		get
-		{
-			return _status;
-		}
-	}
-
 	public override void Init( Hashtable data )
 	{
-		_status = NodeStatus.RUNNING;
 		GameObject gameObject = (GameObject)data["gameObject"];
 		transform = gameObject.GetComponent<Transform>();
 		info = gameObject.GetComponent<GodInfo>();
 	}
 
-	public override void Tick()
+	public override NodeStatus Tick()
 	{
 		Debug.Log( "Ticking: " + this );
-		_status = NodeStatus.FAILURE;
+
 		foreach ( GameObject god in GameObject.FindGameObjectsWithTag( "Enemy God" ) )
 		{
 			if ( ( transform.position - god.GetComponent<Transform>().position )
 				.sqrMagnitude < info.watchDistance * info.watchDistance )
 			{
-				_status = NodeStatus.SUCCESS;
 				info.destination = god.GetComponent<Transform>();
-				Debug.Log( "FOUND MAH GOD BUDDY" );
-				return;
+				return NodeStatus.SUCCESS;
 			}
 		}
+		return NodeStatus.FAILURE;
 	}
 }
