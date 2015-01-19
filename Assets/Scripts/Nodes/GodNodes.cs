@@ -1,7 +1,7 @@
 ﻿using UnityEngine;
 using System.Collections;
 
-public class MoveToDestination : TreeNode
+public class MoveToDestination : LeafNode
 {
 	private GameObject gameObject;
 	private Transform transform;
@@ -32,7 +32,7 @@ public class MoveToDestination : TreeNode
 	}
 }
 
-public class CollectAdjacentResources : TreeNode
+public class CollectAdjacentResources : LeafNode
 {
 	private GodInfo info;
 	private GameObject gameObject;
@@ -71,7 +71,7 @@ public class CollectAdjacentResources : TreeNode
  * @details
  *     Status is SUCCESS if resources exist, FAILURE otherwise.
  */
-public class ResourcesPresent : TreeNode
+public class ResourcesPresent : LeafNode
 {
 	public override void Init( Hashtable data )
 	{
@@ -92,7 +92,7 @@ public class ResourcesPresent : TreeNode
 	}
 }
 
-public class ChooseResourceTarget : TreeNode
+public class ChooseResourceTarget : LeafNode
 {
 	private GameObject gameObject;
 	private Transform transform;
@@ -135,7 +135,7 @@ public class ChooseResourceTarget : TreeNode
  * @details
  *     Status is FAILURE if no other gods, SUCCESS otherwise.
  */
-public class GodsWithinWatchDistance : TreeNode
+public class GodsWithinWatchDistance : LeafNode
 {
 	private Transform transform;
 	private GodInfo info;
@@ -163,7 +163,7 @@ public class GodsWithinWatchDistance : TreeNode
 	}
 }
 
-public class ChooseTargetGod : TreeNode
+public class ChooseTargetGod : LeafNode
 {
 	private Transform transform;
 	private GodInfo info;

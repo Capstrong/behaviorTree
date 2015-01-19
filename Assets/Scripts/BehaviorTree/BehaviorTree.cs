@@ -1,33 +1,47 @@
 ﻿using UnityEngine;
+using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Reflection;
 
-public class AIController : MonoBehaviour
+public class BehaviorTree : ScriptableObject, ISerializationCallbackReceiver
 {
-	private TreeNode _treeRoot;
-
-	private Hashtable data = new Hashtable();
-
-	void Awake()
+	[Serializable]
+	public class SerializedNode
 	{
-		_treeRoot = new MoveToDestination();
-		data["gameObject"] = gameObject;
+		public String typename;
+		public List<int> children;
 	}
 
-	void Update()
+	public TreeNode root;
+
+	public List<SerializedNode> _serializedNodes;
+
+	public void OnBeforeSerialize()
 	{
-		NodeStatus status = _treeRoot.Tick();
-		if ( status != NodeStatus.RUNNING )
+		_serializedNodes = new List<SerializedNode>();
+		if ( root != null )
 		{
-			Debug.Log( "Behavior tree completed, root finished with value " + status );
-			Destroy( this );
+			root.Serialize( _serializedNodes );
 		}
 	}
 
-	public void SetRoot( TreeNode root )
+	public void OnAfterDeserialize()
 	{
-		_treeRoot = root;
-		_treeRoot.Init( data );
+		root = ( _serializedNodes.Count > 0 ? DeserializeNode( 0 ) : null );
+	}
+
+	TreeNode DeserializeNode( int index )
+	{
+		List<TreeNode> children = new List<TreeNode>();
+		foreach ( int childIndex in _serializedNodes[index].children )
+		{
+			children.Add( DeserializeNode( childIndex ) );
+		}
+
+		TreeNode node = (TreeNode)Activator.CreateInstance( Type.GetType( _serializedNodes[index].typename ) );
+		node.SetChildren( children );
+		return node;
 	}
 }
 
@@ -40,10 +54,33 @@ public enum NodeStatus
 
 public abstract class TreeNode
 {
-	public TreeNode parent;
+	public abstract int Serialize( List<BehaviorTree.SerializedNode> serializeList );
+	public abstract void SetChildren( List<TreeNode> childs );
 
 	public abstract void Init( Hashtable data );
 	public abstract NodeStatus Tick();
+}
+
+public abstract class LeafNode : TreeNode
+{
+	public override int Serialize( List<BehaviorTree.SerializedNode> serializeList )
+	{
+		serializeList.Add( new BehaviorTree.SerializedNode()
+		{
+			typename = GetType().AssemblyQualifiedName,
+			children = new List<int>()
+		} );
+
+		return serializeList.Count - 1;
+	}
+
+	public override void SetChildren( List<TreeNode> childs )
+	{
+		if ( childs.Count > 0 )
+		{
+			throw new NotImplementedException();
+		}
+	}
 }
 
 #region Decorators
@@ -52,9 +89,28 @@ public abstract class Decorator : TreeNode
 {
 	public TreeNode child;
 
-	public Decorator( TreeNode child )
+	public override int Serialize( List<BehaviorTree.SerializedNode> serializeList )
 	{
-		this.child = child;
+		int index = serializeList.Count;
+		serializeList.Add( new BehaviorTree.SerializedNode()
+		{
+			typename = GetType().AssemblyQualifiedName,
+			children = new List<int>()
+		} );
+
+		BehaviorTree.SerializedNode serializedNode = serializeList[index];
+		serializedNode.children.Add( child.Serialize( serializeList ) );
+		return index;
+	}
+
+	public override void SetChildren( List<TreeNode> childs )
+	{
+		if ( childs.Count != 1 )
+		{
+			throw new ArgumentException( "A decorator can only have one child." );
+		}
+
+		child = childs[0];
 	}
 
 	public override void Init( Hashtable data )
@@ -66,11 +122,6 @@ public abstract class Decorator : TreeNode
 public class RepeatUntilFail : Decorator
 {
 	private Hashtable _data;
-
-	public RepeatUntilFail( TreeNode child )
-		: base( child )
-	{
-	}
 
 	public override void Init( Hashtable data )
 	{
@@ -98,10 +149,6 @@ public class RepeatUntilFail : Decorator
 
 public class Invert : Decorator
 {
-	public Invert( TreeNode child )
-		: base( child )
-	{
-	}
 
 	public override NodeStatus Tick()
 	{
@@ -122,10 +169,6 @@ public class Invert : Decorator
 
 public class Succeed : Decorator
 {
-	public Succeed( TreeNode child )
-		: base( child )
-	{
-	}
 
 	public override NodeStatus Tick()
 	{
@@ -145,10 +188,6 @@ public class Succeed : Decorator
 
 public class Fail : Decorator
 {
-	public Fail( TreeNode child )
-		: base( child )
-	{
-	}
 
 	public override NodeStatus Tick()
 	{
@@ -174,9 +213,32 @@ public abstract class Compositor : TreeNode
 {
 	public List<TreeNode> children;
 
-	public Compositor( TreeNode[] childs )
+	public override int Serialize( List<BehaviorTree.SerializedNode> serializeList )
 	{
-		children = new List<TreeNode>( childs );
+		int index = serializeList.Count;
+
+		serializeList.Add( new BehaviorTree.SerializedNode()
+		{
+			typename = GetType().AssemblyQualifiedName,
+			children = new List<int>()
+		} );
+
+		foreach ( TreeNode child in children )
+		{
+			serializeList[index].children.Add( child.Serialize( serializeList ) );
+		}
+
+		return index;
+	}
+
+	public override void SetChildren( List<TreeNode> childs )
+	{
+		if ( childs.Count == 0 )
+		{
+			throw new ArgumentException( "A compositor must have at least one child." );
+		}
+
+		children = childs;
 	}
 
 	public override void Init( Hashtable data )
@@ -192,11 +254,6 @@ public class Sequence : Compositor
 {
 	private int currentChild;
 	private Hashtable _data;
-
-	public Sequence( TreeNode[] nodes )
-		: base( nodes )
-	{
-	}
 
 	/**
 	 * @brief Initialize the first child in the sequence.
@@ -244,11 +301,6 @@ public class SequenceParallel : Compositor
 {
 	private Hashtable _data;
 
-	public SequenceParallel( TreeNode[] childs )
-		: base( childs )
-	{
-	}
-
 	public override void Init( Hashtable data )
 	{
 		base.Init( data );
@@ -284,11 +336,6 @@ public class SequenceParallel : Compositor
 public class Selector : Compositor
 {
 	private int _currentChild = 0;
-
-	public Selector( TreeNode[] childs )
-		: base( childs )
-	{
-	}
 
 	public override void Init( Hashtable data )
 	{
