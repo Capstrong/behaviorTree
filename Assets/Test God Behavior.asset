@@ -16,16 +16,44 @@ MonoBehaviour:
       PublicKeyToken=null
     children: 01000000
   - typename: Sequence, Assembly-CSharp, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null
-    children: 020000000400000006000000
+    children: 020000000800000010000000
   - typename: Fail, Assembly-CSharp, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null
     children: 03000000
-  - typename: NullNode, Assembly-CSharp, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null
+  - typename: SequenceParallel, Assembly-CSharp, Version=0.0.0.0, Culture=neutral,
+      PublicKeyToken=null
+    children: 0400000005000000
+  - typename: GodsWithinWatchDistance, Assembly-CSharp, Version=0.0.0.0, Culture=neutral,
+      PublicKeyToken=null
     children: 
   - typename: Sequence, Assembly-CSharp, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null
-    children: 05000000
-  - typename: NullNode, Assembly-CSharp, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null
+    children: 0600000007000000
+  - typename: ChooseTargetGod, Assembly-CSharp, Version=0.0.0.0, Culture=neutral,
+      PublicKeyToken=null
+    children: 
+  - typename: MoveToDestination, Assembly-CSharp, Version=0.0.0.0, Culture=neutral,
+      PublicKeyToken=null
     children: 
   - typename: Fail, Assembly-CSharp, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null
-    children: 07000000
-  - typename: NullNode, Assembly-CSharp, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null
+    children: 09000000
+  - typename: SequenceParallel, Assembly-CSharp, Version=0.0.0.0, Culture=neutral,
+      PublicKeyToken=null
+    children: 0a0000000c000000
+  - typename: Invert, Assembly-CSharp, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null
+    children: 0b000000
+  - typename: GodsWithinWatchDistance, Assembly-CSharp, Version=0.0.0.0, Culture=neutral,
+      PublicKeyToken=null
+    children: 
+  - typename: Sequence, Assembly-CSharp, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null
+    children: 0d0000000e0000000f000000
+  - typename: ChooseResourceTarget, Assembly-CSharp, Version=0.0.0.0, Culture=neutral,
+      PublicKeyToken=null
+    children: 
+  - typename: MoveToDestination, Assembly-CSharp, Version=0.0.0.0, Culture=neutral,
+      PublicKeyToken=null
+    children: 
+  - typename: CollectAdjacentResources, Assembly-CSharp, Version=0.0.0.0, Culture=neutral,
+      PublicKeyToken=null
+    children: 
+  - typename: ResourcesPresent, Assembly-CSharp, Version=0.0.0.0, Culture=neutral,
+      PublicKeyToken=null
     children: 

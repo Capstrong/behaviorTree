@@ -25,6 +25,8 @@ public class BehaviorTree : ScriptableObject, ISerializationCallbackReceiver
 		{
 			root.Serialize( _serializedNodes );
 		}
+
+		EditorUtility.SetDirty( this );
 	}
 
 	public void OnAfterDeserialize()
@@ -126,8 +128,6 @@ public class RepeatUntilFail : Decorator
 
 	public override NodeStatus Tick()
 	{
-		Debug.Log( "Ticking: " + this );
-
 		switch ( _child.Tick() )
 		{
 			case NodeStatus.FAILURE:
@@ -147,8 +147,6 @@ public class Invert : Decorator
 
 	public override NodeStatus Tick()
 	{
-		Debug.Log( "Ticking: " + this );
-
 		switch ( _child.Tick() )
 		{
 			case NodeStatus.SUCCESS:
@@ -167,8 +165,6 @@ public class Succeed : Decorator
 
 	public override NodeStatus Tick()
 	{
-		Debug.Log( "Ticking: " + this );
-
 		switch ( _child.Tick() )
 		{
 			case NodeStatus.FAILURE:
@@ -186,8 +182,6 @@ public class Fail : Decorator
 
 	public override NodeStatus Tick()
 	{
-		Debug.Log( "Ticking: " + this );
-
 		switch ( _child.Tick() )
 		{
 			case NodeStatus.SUCCESS:
@@ -290,8 +284,6 @@ public class Sequence : Compositor
 
 	public override NodeStatus Tick()
 	{
-		Debug.Log( "Ticking: " + this );
-
 		// check child status and act as necessary
 		switch ( _children[currentChild].Tick() )
 		{
@@ -327,8 +319,6 @@ public class SequenceParallel : Compositor
 
 	public override NodeStatus Tick()
 	{
-		Debug.Log( "Ticking: " + this );
-
 		int successes = 0;
 		foreach ( TreeNode child in _children )
 		{
@@ -363,8 +353,6 @@ public class Selector : Compositor
 
 	public override NodeStatus Tick()
 	{
-		Debug.Log( "Ticking: " + this );
-
 		switch ( _children[_currentChild].Tick() )
 		{
 			case NodeStatus.SUCCESS:
