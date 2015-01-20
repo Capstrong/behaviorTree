@@ -247,14 +247,14 @@ public abstract class Compositor : TreeNode
 			{
 				_children[childIndex] = BehaviorTreeEditor.CreateNode( resultType );
 			}
+
+			_children[childIndex].OnGUI();
 		}
 
-		foreach ( TreeNode child in _children )
+		if ( GUILayout.Button( "Add Child" ) )
 		{
-			child.OnGUI();
+			_children.Add( new NullNode() );
 		}
-
-		// todo create button to add new child
 
 		--EditorGUI.indentLevel;
 	}
