@@ -1,7 +1,7 @@
 ﻿using UnityEngine;
 using System.Collections;
 
-public class MoveToDestination : TreeNode
+public class MoveToDestination : LeafNode
 {
 	private GameObject gameObject;
 	private Transform transform;
@@ -16,8 +16,6 @@ public class MoveToDestination : TreeNode
 
 	public override NodeStatus Tick()
 	{
-		Debug.Log( "Ticking: " + this );
-
 		Vector3 direction = info.destination.position - transform.position;
 		transform.Translate( direction.normalized * 10.0f * Time.deltaTime );
 
@@ -32,7 +30,7 @@ public class MoveToDestination : TreeNode
 	}
 }
 
-public class CollectAdjacentResources : TreeNode
+public class CollectAdjacentResources : LeafNode
 {
 	private GodInfo info;
 	private GameObject gameObject;
@@ -47,8 +45,6 @@ public class CollectAdjacentResources : TreeNode
 
 	public override NodeStatus Tick()
 	{
-		Debug.Log( "Ticking: " + this );
-
 		foreach ( GameObject resource in GameObject.FindGameObjectsWithTag( "Resource" ) )
 		{
 			float distanceSquared = ( resource.GetComponent<Transform>().position - transform.position ).sqrMagnitude;
@@ -71,7 +67,7 @@ public class CollectAdjacentResources : TreeNode
  * @details
  *     Status is SUCCESS if resources exist, FAILURE otherwise.
  */
-public class ResourcesPresent : TreeNode
+public class ResourcesPresent : LeafNode
 {
 	public override void Init( Hashtable data )
 	{
@@ -79,8 +75,6 @@ public class ResourcesPresent : TreeNode
 
 	public override NodeStatus Tick()
 	{
-		Debug.Log( "Ticking: " + this );
-
 		if ( GameObject.FindGameObjectsWithTag( "Resource" ).Length > 0 )
 		{
 			return NodeStatus.SUCCESS;
@@ -92,7 +86,7 @@ public class ResourcesPresent : TreeNode
 	}
 }
 
-public class ChooseResourceTarget : TreeNode
+public class ChooseResourceTarget : LeafNode
 {
 	private GameObject gameObject;
 	private Transform transform;
@@ -107,8 +101,6 @@ public class ChooseResourceTarget : TreeNode
 
 	public override NodeStatus Tick()
 	{
-		Debug.Log( "Ticking: " + this );
-
 		info.destination = null;
 		NodeStatus status = NodeStatus.FAILURE;
 		foreach ( GameObject resource in GameObject.FindGameObjectsWithTag( "Resource" ) )
@@ -135,7 +127,7 @@ public class ChooseResourceTarget : TreeNode
  * @details
  *     Status is FAILURE if no other gods, SUCCESS otherwise.
  */
-public class GodsWithinWatchDistance : TreeNode
+public class GodsWithinWatchDistance : LeafNode
 {
 	private Transform transform;
 	private GodInfo info;
@@ -149,8 +141,6 @@ public class GodsWithinWatchDistance : TreeNode
 
 	public override NodeStatus Tick()
 	{
-		Debug.Log( "Ticking: " + this );
-
 		foreach ( GameObject god in GameObject.FindGameObjectsWithTag( "Enemy God" ) )
 		{
 			if ( ( transform.position - god.GetComponent<Transform>().position )
@@ -163,7 +153,7 @@ public class GodsWithinWatchDistance : TreeNode
 	}
 }
 
-public class ChooseTargetGod : TreeNode
+public class ChooseTargetGod : LeafNode
 {
 	private Transform transform;
 	private GodInfo info;
@@ -177,8 +167,6 @@ public class ChooseTargetGod : TreeNode
 
 	public override NodeStatus Tick()
 	{
-		Debug.Log( "Ticking: " + this );
-
 		foreach ( GameObject god in GameObject.FindGameObjectsWithTag( "Enemy God" ) )
 		{
 			if ( ( transform.position - god.GetComponent<Transform>().position )
