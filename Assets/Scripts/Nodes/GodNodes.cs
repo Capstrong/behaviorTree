@@ -16,8 +16,6 @@ public class MoveToDestination : LeafNode
 
 	public override NodeStatus Tick()
 	{
-		Debug.Log( "Ticking: " + this );
-
 		Vector3 direction = info.destination.position - transform.position;
 		transform.Translate( direction.normalized * 10.0f * Time.deltaTime );
 
@@ -47,8 +45,6 @@ public class CollectAdjacentResources : LeafNode
 
 	public override NodeStatus Tick()
 	{
-		Debug.Log( "Ticking: " + this );
-
 		foreach ( GameObject resource in GameObject.FindGameObjectsWithTag( "Resource" ) )
 		{
 			float distanceSquared = ( resource.GetComponent<Transform>().position - transform.position ).sqrMagnitude;
@@ -79,8 +75,6 @@ public class ResourcesPresent : LeafNode
 
 	public override NodeStatus Tick()
 	{
-		Debug.Log( "Ticking: " + this );
-
 		if ( GameObject.FindGameObjectsWithTag( "Resource" ).Length > 0 )
 		{
 			return NodeStatus.SUCCESS;
@@ -107,8 +101,6 @@ public class ChooseResourceTarget : LeafNode
 
 	public override NodeStatus Tick()
 	{
-		Debug.Log( "Ticking: " + this );
-
 		info.destination = null;
 		NodeStatus status = NodeStatus.FAILURE;
 		foreach ( GameObject resource in GameObject.FindGameObjectsWithTag( "Resource" ) )
@@ -149,8 +141,6 @@ public class GodsWithinWatchDistance : LeafNode
 
 	public override NodeStatus Tick()
 	{
-		Debug.Log( "Ticking: " + this );
-
 		foreach ( GameObject god in GameObject.FindGameObjectsWithTag( "Enemy God" ) )
 		{
 			if ( ( transform.position - god.GetComponent<Transform>().position )
@@ -177,8 +167,6 @@ public class ChooseTargetGod : LeafNode
 
 	public override NodeStatus Tick()
 	{
-		Debug.Log( "Ticking: " + this );
-
 		foreach ( GameObject god in GameObject.FindGameObjectsWithTag( "Enemy God" ) )
 		{
 			if ( ( transform.position - god.GetComponent<Transform>().position )

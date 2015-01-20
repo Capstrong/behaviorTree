@@ -16,11 +16,7 @@ public class AIController : MonoBehaviour
 
 	void Start()
 	{
-		Debug.Log( "behavior: " + behavior );
-		if ( behavior != null )
-		{
-			Debug.Log( "Root: " + behavior.root );
-		}
+		behavior = (BehaviorTree)ScriptableObject.Instantiate( behavior );
 		behavior.root.Init( data );
 	}
 
