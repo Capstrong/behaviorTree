@@ -7,6 +7,9 @@ using System.Reflection;
 
 public class BehaviorTreeEditor : EditorWindow
 {
+	public static Type[] nodeTypes;
+	public static String[] nodeTypeNames;
+
 	private BehaviorTree _behaviorTree;
 
 	/**
@@ -39,6 +42,8 @@ public class BehaviorTreeEditor : EditorWindow
 
 	void OnGUI()
 	{
+		CreateTypeLists();
+
 		_behaviorTree = (BehaviorTree)EditorGUILayout.ObjectField( "Behavior Tree",
 		                                                           _behaviorTree,
 		                                                           typeof( BehaviorTree ),
@@ -46,16 +51,37 @@ public class BehaviorTreeEditor : EditorWindow
 
 		if ( _behaviorTree != null )
 		{
-			Type[] nodeTypes = typeof( TreeNode ).Assembly.GetTypes()
-				.Where( type => type.IsSubclassOf( typeof( TreeNode ) ) && !type.IsAbstract ).ToArray<Type>();
-			String[] nodeTypeNames = Array.ConvertAll<Type, String>( nodeTypes,
-				new Converter<Type, String> (
-					delegate( Type type ) { return type.ToString(); } ) );
-
 			GUILayout.Label( "Nodes", EditorStyles.boldLabel );
-			int selectedType = ( _behaviorTree.root != null ? Array.IndexOf<Type>( nodeTypes, _behaviorTree.root.GetType() ) : 0 );
-			selectedType = EditorGUILayout.Popup( "Root Node", selectedType, nodeTypeNames );
-			_behaviorTree.root = (TreeNode)Activator.CreateInstance( nodeTypes[selectedType] );
+			
+			Type resultType = CreateNodeTypeSelector( _behaviorTree.root );
+			if ( resultType != _behaviorTree.root.GetType() )
+			{
+				_behaviorTree.root = (TreeNode)Activator.CreateInstance( resultType );
+			}
+			_behaviorTree.root.OnGUI();
 		}
+	}
+
+	void CreateTypeLists()
+	{
+		// get list of possible node types
+		// i.e., all types that extend TreeNode and are not abstract
+		nodeTypes = typeof( TreeNode ).Assembly.GetTypes()
+				.Where( type => type.IsSubclassOf( typeof( TreeNode ) ) && !type.IsAbstract ).ToArray<Type>();
+		nodeTypeNames = Array.ConvertAll<Type, String>( nodeTypes,
+			new Converter<Type, String> (
+				delegate( Type type ) { return type.ToString(); } ) );
+	}
+
+	public static Type CreateNodeTypeSelector( TreeNode node )
+	{
+		int selectedType = ( node != null ? Array.IndexOf<Type>( nodeTypes, node.GetType() ) : 0 );
+		selectedType = EditorGUILayout.Popup( "-", selectedType, nodeTypeNames );
+		return nodeTypes[selectedType];
+	}
+
+	public static TreeNode CreateNode( Type nodeType )
+	{
+		return (TreeNode)Activator.CreateInstance( nodeType );
 	}
 }

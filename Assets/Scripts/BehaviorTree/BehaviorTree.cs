@@ -1,4 +1,5 @@
 ﻿using UnityEngine;
+using UnityEditor;
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -56,38 +57,17 @@ public abstract class TreeNode
 {
 	public abstract int Serialize( List<BehaviorTree.SerializedNode> serializeList );
 	public abstract void SetChildren( List<TreeNode> childs );
+	public abstract void OnGUI();
 
 	public abstract void Init( Hashtable data );
 	public abstract NodeStatus Tick();
-}
-
-public abstract class LeafNode : TreeNode
-{
-	public override int Serialize( List<BehaviorTree.SerializedNode> serializeList )
-	{
-		serializeList.Add( new BehaviorTree.SerializedNode()
-		{
-			typename = GetType().AssemblyQualifiedName,
-			children = new List<int>()
-		} );
-
-		return serializeList.Count - 1;
-	}
-
-	public override void SetChildren( List<TreeNode> childs )
-	{
-		if ( childs.Count > 0 )
-		{
-			throw new NotImplementedException();
-		}
-	}
 }
 
 #region Decorators
 
 public abstract class Decorator : TreeNode
 {
-	public TreeNode child;
+	public TreeNode _child = new NullNode();
 
 	public override int Serialize( List<BehaviorTree.SerializedNode> serializeList )
 	{
@@ -99,7 +79,7 @@ public abstract class Decorator : TreeNode
 		} );
 
 		BehaviorTree.SerializedNode serializedNode = serializeList[index];
-		serializedNode.children.Add( child.Serialize( serializeList ) );
+		serializedNode.children.Add( _child.Serialize( serializeList ) );
 		return index;
 	}
 
@@ -110,12 +90,27 @@ public abstract class Decorator : TreeNode
 			throw new ArgumentException( "A decorator can only have one child." );
 		}
 
-		child = childs[0];
+		_child = childs[0];
+	}
+
+	public override void OnGUI()
+	{
+		++EditorGUI.indentLevel;
+
+		Type resultType = BehaviorTreeEditor.CreateNodeTypeSelector( _child );
+		if ( resultType != _child.GetType() )
+		{
+			_child = BehaviorTreeEditor.CreateNode( resultType );
+		}
+
+		_child.OnGUI();
+
+		--EditorGUI.indentLevel;
 	}
 
 	public override void Init( Hashtable data )
 	{
-		child.Init( data );
+		_child.Init( data );
 	}
 }
 
@@ -133,12 +128,12 @@ public class RepeatUntilFail : Decorator
 	{
 		Debug.Log( "Ticking: " + this );
 
-		switch ( child.Tick() )
+		switch ( _child.Tick() )
 		{
 			case NodeStatus.FAILURE:
 				return NodeStatus.SUCCESS;
 			case NodeStatus.SUCCESS:
-				child.Init( _data );
+				_child.Init( _data );
 				return NodeStatus.RUNNING;
 			case NodeStatus.RUNNING:
 			default:
@@ -154,7 +149,7 @@ public class Invert : Decorator
 	{
 		Debug.Log( "Ticking: " + this );
 
-		switch ( child.Tick() )
+		switch ( _child.Tick() )
 		{
 			case NodeStatus.SUCCESS:
 				return NodeStatus.FAILURE;
@@ -174,7 +169,7 @@ public class Succeed : Decorator
 	{
 		Debug.Log( "Ticking: " + this );
 
-		switch ( child.Tick() )
+		switch ( _child.Tick() )
 		{
 			case NodeStatus.FAILURE:
 			case NodeStatus.SUCCESS:
@@ -193,7 +188,7 @@ public class Fail : Decorator
 	{
 		Debug.Log( "Ticking: " + this );
 
-		switch ( child.Tick() )
+		switch ( _child.Tick() )
 		{
 			case NodeStatus.SUCCESS:
 			case NodeStatus.FAILURE:
@@ -211,7 +206,7 @@ public class Fail : Decorator
 
 public abstract class Compositor : TreeNode
 {
-	public List<TreeNode> children;
+	public List<TreeNode> _children = new List<TreeNode>() { new NullNode() };
 
 	public override int Serialize( List<BehaviorTree.SerializedNode> serializeList )
 	{
@@ -223,7 +218,7 @@ public abstract class Compositor : TreeNode
 			children = new List<int>()
 		} );
 
-		foreach ( TreeNode child in children )
+		foreach ( TreeNode child in _children )
 		{
 			serializeList[index].children.Add( child.Serialize( serializeList ) );
 		}
@@ -238,12 +233,35 @@ public abstract class Compositor : TreeNode
 			throw new ArgumentException( "A compositor must have at least one child." );
 		}
 
-		children = childs;
+		_children = childs;
+	}
+
+	public override void OnGUI()
+	{
+		++EditorGUI.indentLevel;
+
+		for ( int childIndex = 0; childIndex < _children.Count; ++childIndex )
+		{
+			Type resultType = BehaviorTreeEditor.CreateNodeTypeSelector( _children[childIndex] );
+			if ( resultType != _children[childIndex].GetType() )
+			{
+				_children[childIndex] = BehaviorTreeEditor.CreateNode( resultType );
+			}
+		}
+
+		foreach ( TreeNode child in _children )
+		{
+			child.OnGUI();
+		}
+
+		// todo create button to add new child
+
+		--EditorGUI.indentLevel;
 	}
 
 	public override void Init( Hashtable data )
 	{
-		foreach ( TreeNode child in children )
+		foreach ( TreeNode child in _children )
 		{
 			child.Init( data );
 		}
@@ -267,7 +285,7 @@ public class Sequence : Compositor
 	{
 		_data = data;
 		currentChild = 0;
-		children[currentChild].Init( _data );
+		_children[currentChild].Init( _data );
 	}
 
 	public override NodeStatus Tick()
@@ -275,17 +293,17 @@ public class Sequence : Compositor
 		Debug.Log( "Ticking: " + this );
 
 		// check child status and act as necessary
-		switch ( children[currentChild].Tick() )
+		switch ( _children[currentChild].Tick() )
 		{
 			case NodeStatus.SUCCESS:
 				++currentChild;
-				if ( currentChild >= children.Count )
+				if ( currentChild >= _children.Count )
 				{
 					return NodeStatus.SUCCESS;
 				}
 				else
 				{
-					children[currentChild].Init( _data );
+					_children[currentChild].Init( _data );
 					return NodeStatus.RUNNING;
 				}
 			case NodeStatus.FAILURE:
@@ -312,7 +330,7 @@ public class SequenceParallel : Compositor
 		Debug.Log( "Ticking: " + this );
 
 		int successes = 0;
-		foreach ( TreeNode child in children )
+		foreach ( TreeNode child in _children )
 		{
 			switch ( child.Tick() )
 			{
@@ -322,7 +340,7 @@ public class SequenceParallel : Compositor
 					// if all children succeed at once then we win forever
 					++successes;
 					child.Init( _data );
-					if ( successes == children.Count ) return NodeStatus.SUCCESS;
+					if ( successes == _children.Count ) return NodeStatus.SUCCESS;
 					break;
 				case NodeStatus.RUNNING:
 				default:
@@ -347,18 +365,55 @@ public class Selector : Compositor
 	{
 		Debug.Log( "Ticking: " + this );
 
-		switch ( children[_currentChild].Tick() )
+		switch ( _children[_currentChild].Tick() )
 		{
 			case NodeStatus.SUCCESS:
 				return NodeStatus.SUCCESS;
 			case NodeStatus.FAILURE:
 				++_currentChild;
-				if ( _currentChild >= children.Count ) return NodeStatus.FAILURE;
+				if ( _currentChild >= _children.Count ) return NodeStatus.FAILURE;
 				return NodeStatus.RUNNING;
 			case NodeStatus.RUNNING:
 			default:
 				return NodeStatus.RUNNING;
 		}
+	}
+}
+
+#endregion
+
+#region Leaves
+
+public abstract class LeafNode : TreeNode
+{
+	public override int Serialize( List<BehaviorTree.SerializedNode> serializeList )
+	{
+		serializeList.Add( new BehaviorTree.SerializedNode()
+		{
+			typename = GetType().AssemblyQualifiedName,
+			children = new List<int>()
+		} );
+
+		return serializeList.Count - 1;
+	}
+
+	public override void SetChildren( List<TreeNode> childs )
+	{
+		if ( childs.Count > 0 )
+		{
+			throw new NotImplementedException();
+		}
+	}
+
+	public override void OnGUI() { }
+}
+
+public class NullNode : LeafNode
+{
+	public override void Init( Hashtable data ) { }
+	public override NodeStatus Tick()
+	{
+		return NodeStatus.SUCCESS;
 	}
 }
 
