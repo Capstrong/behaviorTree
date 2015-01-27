@@ -14,7 +14,7 @@ public class BehaviorTree : ScriptableObject, ISerializationCallbackReceiver
 		public List<int> children;
 	}
 
-	public TreeNode root;
+	public TreeNode root = new NullNode();
 
 	public List<SerializedNode> _serializedNodes;
 
