@@ -1,4 +1,6 @@
-﻿using UnityEngine;
+﻿
+#if UNITY_EDITOR
+using UnityEngine;
 using UnityEditor;
 using System;
 using System.Collections;
@@ -85,3 +87,4 @@ public class BehaviorTreeEditor : EditorWindow
 		return (TreeNode)Activator.CreateInstance( nodeType );
 	}
 }
+#endif
