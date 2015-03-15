@@ -7,26 +7,59 @@ public class AIController : MonoBehaviour
 {
 	public BehaviorTree behavior;
 
-	private Hashtable data = new Hashtable();
+	private Hashtable _data = new Hashtable();
+	private Stack<TreeNode> _executionStack = new Stack<TreeNode>();
 
 	void Awake()
 	{
-		data["gameObject"] = gameObject;
+		_data["gameObject"] = gameObject;
+		behavior = (BehaviorTree)ScriptableObject.Instantiate( behavior );
 	}
 
 	void Start()
 	{
-		behavior = (BehaviorTree)ScriptableObject.Instantiate( behavior );
-		behavior.root.Init( data );
+		_executionStack.Push( behavior.root );
+		PushAllChildren( behavior.root );
 	}
 
 	void Update()
 	{
-		NodeStatus status = behavior.root.Tick();
-		if ( status != NodeStatus.RUNNING )
+		NodeStatus status = NodeStatus.SUCCESS;
+
+		do
 		{
-			Debug.Log( "Behavior tree completed, root finished with value " + status );
-			Destroy( this );
+			// Tick current node
+			status = _executionStack.Peek().Tick( status );
+
+			switch ( status )
+			{
+				case NodeStatus.SUCCESS:
+				case NodeStatus.FAILURE:
+					// node is done, return to parent
+					_executionStack.Pop();
+					break;
+
+				case NodeStatus.RUNNING_CHILDREN:
+					// rebuild the stack with new children
+					PushAllChildren( _executionStack.Peek() );
+					status = NodeStatus.RUNNING;
+					break;
+
+				case NodeStatus.RUNNING:
+					// DON'T DO ANYTHING ELSE
+					break;
+			}
+		}
+		while ( status != NodeStatus.RUNNING );
+	}
+
+	void PushAllChildren( TreeNode node )
+	{
+		TreeNode child = node.Init( _data );
+		while ( child != null )
+		{
+			_executionStack.Push( child );
+			child = child.Init( _data );
 		}
 	}
 }
