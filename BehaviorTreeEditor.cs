@@ -12,7 +12,13 @@ public class BehaviorTreeEditor : EditorWindow
 	public static String[] nodeTypeNames;
 
 	private BehaviorTree _behaviorTree;
-	private static BehaviorTreeEditor _instance;
+	private static BehaviorTreeEditor _instance
+	{
+		get
+		{
+			return EditorWindow.GetWindow<BehaviorTreeEditor>();
+		}
+	}
 
 	/**
 	 * @brief Add a menu item in the editor for creating new behavior tree assets.
@@ -39,13 +45,11 @@ public class BehaviorTreeEditor : EditorWindow
 	[MenuItem( "Window/Behavior Tree Editor" )]
 	public static void ShowWindow()
 	{
-		_instance = EditorWindow.GetWindow<BehaviorTreeEditor>();
+		EditorWindow.GetWindow<BehaviorTreeEditor>();
 	}
 
 	void OnGUI()
 	{
-		_instance = this;
-
 		try
 		{
 			CreateGUI();
@@ -93,6 +97,23 @@ public class BehaviorTreeEditor : EditorWindow
 		nodeTypeNames = Array.ConvertAll<Type, String>( nodeTypes,
 			new Converter<Type, String> (
 				delegate( Type type ) { return type.ToString(); } ) );
+	}
+
+	public static void DeleteNode( TreeNode parentNode )
+	{
+		if ( parentNode is Decorator )
+		{
+			DeleteNode( ( (Decorator)parentNode )._child );
+		}
+		else if ( parentNode is Compositor )
+		{
+			foreach ( TreeNode child in ( (Compositor)parentNode )._children )
+			{
+				DeleteNode( child );
+			}
+		}
+
+		DestroyImmediate( parentNode, true );
 	}
 
 	public static Type CreateNodeTypeSelector( TreeNode node )

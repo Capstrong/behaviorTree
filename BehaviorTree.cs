@@ -54,11 +54,11 @@ public abstract class Decorator : TreeNode
 		Type resultType = BehaviorTreeEditor.CreateNodeTypeSelector( _child );
 		if ( resultType != _child.GetType() )
 		{
+			BehaviorTreeEditor.DeleteNode( _child );
 			_child = BehaviorTreeEditor.CreateNode( resultType );
 		}
 
 		_child.OnGUI();
-
 
 		--EditorGUI.indentLevel;
 		#endif
@@ -157,12 +157,7 @@ public class Fail : Decorator
 
 public abstract class Compositor : TreeNode
 {
-	public List<TreeNode> _children;
-
-	void OnEnable()
-	{
-		_children = new List<TreeNode>() { BehaviorTreeEditor.nullNode };
-	}
+	public List<TreeNode> _children = new List<TreeNode>();
 
 	public override void OnGUI()
 	{
@@ -174,6 +169,7 @@ public abstract class Compositor : TreeNode
 			Type resultType = BehaviorTreeEditor.CreateNodeTypeSelector( _children[childIndex] );
 			if ( resultType != _children[childIndex].GetType() )
 			{
+				BehaviorTreeEditor.DeleteNode( _children[childIndex] );
 				_children[childIndex] = BehaviorTreeEditor.CreateNode( resultType );
 			}
 
@@ -182,7 +178,7 @@ public abstract class Compositor : TreeNode
 
 		if ( GUILayout.Button( "Add Child" ) )
 		{
-			_children.Add( new NullNode() );
+			_children.Add( BehaviorTreeEditor.nullNode );
 		}
 
 		--EditorGUI.indentLevel;
@@ -193,7 +189,6 @@ public abstract class Compositor : TreeNode
 public class Sequence : Compositor
 {
 	private int _currentChild = 0;
-	private Hashtable _data;
 
 	/**
 	 * @brief Initialize the first child in the sequence.
@@ -205,7 +200,6 @@ public class Sequence : Compositor
 	 */
 	public override TreeNode Init( Hashtable data )
 	{
-		_data = data;
 		return _children[_currentChild];
 	}
 
@@ -343,53 +337,21 @@ public class Subtree
 	}
 }
 
-public abstract class Parallel : TreeNode, ISerializationCallbackReceiver
+public abstract class Parallel : Compositor
 {
-	public List<Subtree> _children = new List<Subtree>();
-	public List<TreeNode> _serializedChildren;
+	public List<Subtree> _subtrees = new List<Subtree>();
 
-	public override void OnGUI()
+	public override TreeNode Init( Hashtable data )
 	{
-		#if UNITY_EDITOR
-		++EditorGUI.indentLevel;
-
-		for ( int childIndex = 0; childIndex < _children.Count; ++childIndex )
+		_subtrees = new List<Subtree>();
+		foreach ( TreeNode child in _children )
 		{
-			Type resultType = BehaviorTreeEditor.CreateNodeTypeSelector( _children[childIndex].root );
-			if ( resultType != _children[childIndex].GetType() )
-			{
-				_children[childIndex] = new Subtree( BehaviorTreeEditor.CreateNode( resultType ) );
-			}
-
-			_children[childIndex].root.OnGUI();
+			Subtree subtree = new Subtree( child );
+			_subtrees.Add( subtree );
+			subtree.Start( data );
 		}
 
-		if ( GUILayout.Button( "Add Child" ) )
-		{
-			_children.Add( new Subtree( BehaviorTreeEditor.nullNode ) );
-		}
-
-		--EditorGUI.indentLevel;
-		#endif
-	}
-
-	// let's just pretend the subtrees aren't there
-	public void OnBeforeSerialize()
-	{
-		_serializedChildren = new List<TreeNode>();
-		foreach ( Subtree subtree in _children )
-		{
-			_serializedChildren.Add( subtree.root );
-		}
-	}
-
-	public void OnAfterDeserialize()
-	{
-		_children = new List<Subtree>();
-		foreach ( TreeNode child in _serializedChildren )
-		{
-			_children.Add( new Subtree( child ) );
-		}
+		return null; // pretend we're a leaf node, we need to be ticked every frame
 	}
 }
 
@@ -400,13 +362,7 @@ public class SequenceParallel : Parallel
 	public override TreeNode Init( Hashtable data )
 	{
 		_data = data;
-
-		foreach ( Subtree subtree in _children )
-		{
-			subtree.Start( _data );
-		}
-
-		return null; // pretend we're a leaf node, we need to be ticked every frame
+		return base.Init( _data );
 	}
 
 	public override NodeStatus Tick( NodeStatus childStatus )
@@ -415,9 +371,9 @@ public class SequenceParallel : Parallel
 		DebugUtils.Assert( childStatus == NodeStatus.SUCCESS );
 
 		int successes = 0;
-		foreach ( Subtree child in _children )
+		foreach ( Subtree subtree in _subtrees )
 		{
-			switch ( child.root.Tick( NodeStatus.SUCCESS ) )
+			switch ( subtree.Tick() )
 			{
 				case NodeStatus.FAILURE:
 					return NodeStatus.FAILURE;
@@ -426,8 +382,8 @@ public class SequenceParallel : Parallel
 					// count successes, if all children succeed then we win
 					++successes;
 
-					// restart a child if it succeeds
-					child.Start( _data );
+					// restart a subtree if it succeeds
+					subtree.Start( _data );
 					if ( successes == _children.Count ) return NodeStatus.SUCCESS;
 					break;
 
