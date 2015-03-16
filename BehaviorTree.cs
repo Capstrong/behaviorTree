@@ -23,8 +23,6 @@ public enum NodeStatus
 
 public abstract class TreeNode : ScriptableObject
 {
-	public abstract void OnGUI();
-
 	public abstract TreeNode Init( Hashtable data );
 
 	/**
@@ -40,31 +38,6 @@ public abstract class TreeNode : ScriptableObject
 public abstract class Decorator : TreeNode
 {
 	public TreeNode _child;
-
-	public override void OnGUI()
-	{
-		#if UNITY_EDITOR
-		++EditorGUI.indentLevel;
-
-		Type resultType = BehaviorTreeEditor.CreateNodeTypeSelector( _child );
-		if ( _child )
-		{
-			if ( resultType != _child.GetType() )
-			{
-				BehaviorTreeEditor.DeleteNode( _child );
-				_child = BehaviorTreeEditor.CreateNode( resultType );
-			}
-		}
-		else
-		{
-			_child = BehaviorTreeEditor.CreateNode( resultType );
-		}
-
-		_child.OnGUI();
-
-		--EditorGUI.indentLevel;
-		#endif
-	}
 
 	public override TreeNode Init( Hashtable data )
 	{
@@ -160,32 +133,6 @@ public class Fail : Decorator
 public abstract class Compositor : TreeNode
 {
 	public List<TreeNode> _children = new List<TreeNode>();
-
-	public override void OnGUI()
-	{
-		#if UNITY_EDITOR
-		++EditorGUI.indentLevel;
-
-		for ( int childIndex = 0; childIndex < _children.Count; ++childIndex )
-		{
-			Type resultType = BehaviorTreeEditor.CreateNodeTypeSelector( _children[childIndex] );
-			if ( resultType != _children[childIndex].GetType() )
-			{
-				BehaviorTreeEditor.DeleteNode( _children[childIndex] );
-				_children[childIndex] = BehaviorTreeEditor.CreateNode( resultType );
-			}
-
-			_children[childIndex].OnGUI();
-		}
-
-		if ( GUILayout.Button( "Add Child" ) )
-		{
-			_children.Add( BehaviorTreeEditor.nullNode );
-		}
-
-		--EditorGUI.indentLevel;
-		#endif
-	}
 }
 
 public class Sequence : Compositor
@@ -409,8 +356,6 @@ public class SequenceParallel : Parallel
 
 public abstract class LeafNode : TreeNode
 {
-	public override void OnGUI() { }
-
 	public override TreeNode Init( Hashtable data )
 	{
 		InitSelf( data );

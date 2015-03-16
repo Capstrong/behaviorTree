@@ -16,7 +16,7 @@ public class AIController : MonoBehaviour
 	void Awake()
 	{
 		_data["gameObject"] = gameObject;
-		//behavior = (BehaviorTree)ScriptableObject.Instantiate( behavior );
+		behavior = BehaviorTreeEditor.CloneTree( behavior );
 	}
 
 	void Start()

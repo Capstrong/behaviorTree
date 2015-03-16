@@ -3,6 +3,7 @@ using UnityEngine;
 using UnityEditor;
 using System;
 using System.Collections;
+using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 
@@ -70,21 +71,81 @@ public class BehaviorTreeEditor : EditorWindow
 		        _behaviorTree,
 		        typeof( BehaviorTree ),
 		        false );
-		if ( _behaviorTree && !_behaviorTree.root )
-		{
-			_behaviorTree.root = nullNode;
-		}
 
 		if ( _behaviorTree != null )
 		{
+			// set default root node
+			if ( !_behaviorTree.root )
+			{
+				_behaviorTree.root = nullNode;
+			}
+
 			GUILayout.Label( "Nodes", EditorStyles.boldLabel );
 
 			Type resultType = CreateNodeTypeSelector( _behaviorTree.root );
 			if ( resultType != _behaviorTree.root.GetType() )
 			{
-				_behaviorTree.root = (TreeNode)ScriptableObject.CreateInstance( resultType );
+				DeleteNode( _behaviorTree.root );
+				_behaviorTree.root = CreateNode( resultType );
 			}
-			_behaviorTree.root.OnGUI();
+			
+			CreateNodeGUI( _behaviorTree.root );
+		}
+	}
+
+	void CreateNodeGUI( TreeNode node )
+	{
+		++EditorGUI.indentLevel;
+		
+		if ( node is Decorator )
+		{
+			CreateDecoratorGUI( (Decorator)node );
+		}
+		else if ( node is Compositor )
+		{
+			CreateCompositorGUI( (Compositor)node );
+		}
+
+		--EditorGUI.indentLevel;
+	}
+
+	void CreateDecoratorGUI( Decorator node )
+	{
+
+		Type resultType = BehaviorTreeEditor.CreateNodeTypeSelector( node._child );
+		if ( node._child )
+		{
+			if ( resultType != node._child.GetType() )
+			{
+				BehaviorTreeEditor.DeleteNode( node._child );
+				node._child = BehaviorTreeEditor.CreateNode( resultType );
+			}
+		}
+		else
+		{
+			node._child = BehaviorTreeEditor.CreateNode( resultType );
+		}
+
+		CreateNodeGUI( node._child );
+	}
+
+	void CreateCompositorGUI( Compositor node )
+	{
+		for ( int childIndex = 0; childIndex < node._children.Count; ++childIndex )
+		{
+			Type resultType = BehaviorTreeEditor.CreateNodeTypeSelector( node._children[childIndex] );
+			if ( resultType != node._children[childIndex].GetType() )
+			{
+				BehaviorTreeEditor.DeleteNode( node._children[childIndex] );
+				node._children[childIndex] = BehaviorTreeEditor.CreateNode( resultType );
+			}
+
+			CreateNodeGUI( node._children[childIndex] );
+		}
+
+		if ( GUILayout.Button( "Add Child" ) )
+		{
+			node._children.Add( BehaviorTreeEditor.nullNode );
 		}
 	}
 
@@ -140,6 +201,37 @@ public class BehaviorTreeEditor : EditorWindow
 		{
 			return CreateNode( typeof( NullNode ) );
 		}
+	}
+
+	public static BehaviorTree CloneTree( BehaviorTree behaviorTree )
+	{
+		BehaviorTree treeClone = Instantiate<BehaviorTree>( behaviorTree );
+
+		treeClone.root = CloneNode( behaviorTree.root );
+
+		return treeClone;
+	}
+
+	public static TreeNode CloneNode( TreeNode node )
+	{
+		TreeNode nodeClone = Instantiate<TreeNode>( node );
+
+		if ( node is Decorator )
+		{
+			( (Decorator)nodeClone )._child = CloneNode( ( (Decorator)node )._child );
+		}
+		else if ( node is Compositor )
+		{
+			List<TreeNode> cloneChildren = new List<TreeNode>();
+			foreach ( TreeNode child in ( (Compositor)node )._children )
+			{
+				cloneChildren.Add( (TreeNode)CloneNode( child ) );
+			}
+
+			( (Compositor)node )._children = cloneChildren;
+		}
+
+		return nodeClone;
 	}
 }
 #endif
