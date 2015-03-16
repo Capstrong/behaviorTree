@@ -12,6 +12,7 @@ public class BehaviorTreeEditor : EditorWindow
 	public static String[] nodeTypeNames;
 
 	private BehaviorTree _behaviorTree;
+	private static BehaviorTreeEditor _instance;
 
 	/**
 	 * @brief Add a menu item in the editor for creating new behavior tree assets.
@@ -20,7 +21,7 @@ public class BehaviorTreeEditor : EditorWindow
 	 *     Create new asset in currently selected folder of the project view,
 	 *     rather than always placing them in the root Assets folder.
 	 *
-	 * @todo
+	 * @todol
 	 *     Check if asset already exists, because by default the AssetDatabase
 	 *     will overwrite an existing asset of the same name.
 	 */
@@ -38,26 +39,46 @@ public class BehaviorTreeEditor : EditorWindow
 	[MenuItem( "Window/Behavior Tree Editor" )]
 	public static void ShowWindow()
 	{
-		EditorWindow.GetWindow<BehaviorTreeEditor>();
+		_instance = EditorWindow.GetWindow<BehaviorTreeEditor>();
 	}
 
 	void OnGUI()
 	{
+		_instance = this;
+
+		try
+		{
+			CreateGUI();
+		}
+		catch ( Exception e )
+		{
+			Debug.LogError( e );
+		}
+	}
+
+	void CreateGUI()
+	{
 		CreateTypeLists();
 
-		_behaviorTree = (BehaviorTree)EditorGUILayout.ObjectField( "Behavior Tree",
-		                                                           _behaviorTree,
-		                                                           typeof( BehaviorTree ),
-		                                                           false );
+		_behaviorTree =
+		    (BehaviorTree)EditorGUILayout.ObjectField(
+		        "Behavior Tree",
+		        _behaviorTree,
+		        typeof( BehaviorTree ),
+		        false );
+		if ( _behaviorTree && !_behaviorTree.root )
+		{
+			_behaviorTree.root = nullNode;
+		}
 
 		if ( _behaviorTree != null )
 		{
 			GUILayout.Label( "Nodes", EditorStyles.boldLabel );
-			
+
 			Type resultType = CreateNodeTypeSelector( _behaviorTree.root );
 			if ( resultType != _behaviorTree.root.GetType() )
 			{
-				_behaviorTree.root = (TreeNode)Activator.CreateInstance( resultType );
+				_behaviorTree.root = (TreeNode)ScriptableObject.CreateInstance( resultType );
 			}
 			_behaviorTree.root.OnGUI();
 		}
@@ -83,7 +104,21 @@ public class BehaviorTreeEditor : EditorWindow
 
 	public static TreeNode CreateNode( Type nodeType )
 	{
-		return (TreeNode)Activator.CreateInstance( nodeType );
+		DebugUtils.Assert( _instance, "Cannot create a node without a current editor instance!" );
+		DebugUtils.Assert( _instance._behaviorTree, "Can't create a node without an asset to add it to!" );
+
+		TreeNode newNode = (TreeNode)ScriptableObject.CreateInstance( nodeType );
+		AssetDatabase.AddObjectToAsset( newNode, _instance._behaviorTree );
+		EditorUtility.SetDirty( _instance._behaviorTree );
+		return newNode;
+	}
+
+	public static TreeNode nullNode
+	{
+		get
+		{
+			return CreateNode( typeof( NullNode ) );
+		}
 	}
 }
 #endif

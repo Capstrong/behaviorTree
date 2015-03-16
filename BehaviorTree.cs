@@ -8,50 +8,9 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Reflection;
 
-public class BehaviorTree : ScriptableObject, ISerializationCallbackReceiver
+public class BehaviorTree : ScriptableObject
 {
-	[Serializable]
-	public class SerializedNode
-	{
-		public String typename;
-		public List<int> children;
-	}
-
-	public TreeNode root = new NullNode();
-
-	public List<SerializedNode> _serializedNodes;
-
-	public void OnBeforeSerialize()
-	{
-		#if UNITY_EDITOR
-		_serializedNodes = new List<SerializedNode>();
-		if ( root != null )
-		{
-			root.Serialize( _serializedNodes );
-		}
-
-
-		EditorUtility.SetDirty( this );
-		#endif
-	}
-
-	public void OnAfterDeserialize()
-	{
-		root = ( _serializedNodes.Count > 0 ? DeserializeNode( 0 ) : null );
-	}
-
-	TreeNode DeserializeNode( int index )
-	{
-		List<TreeNode> children = new List<TreeNode>();
-		foreach ( int childIndex in _serializedNodes[index].children )
-		{
-			children.Add( DeserializeNode( childIndex ) );
-		}
-
-		TreeNode node = (TreeNode)Activator.CreateInstance( Type.GetType( _serializedNodes[index].typename ) );
-		node.SetChildren( children );
-		return node;
-	}
+	public TreeNode root;
 }
 
 public enum NodeStatus
@@ -62,10 +21,8 @@ public enum NodeStatus
 	RUNNING_CHILDREN // Like RUNNING, but signals to the AIController that it has chilren that should be pushed on to the execution stack.
 }
 
-public abstract class TreeNode
+public abstract class TreeNode : ScriptableObject
 {
-	public abstract int Serialize( List<BehaviorTree.SerializedNode> serializeList );
-	public abstract void SetChildren( List<TreeNode> childs );
 	public abstract void OnGUI();
 
 	public abstract TreeNode Init( Hashtable data );
@@ -82,30 +39,11 @@ public abstract class TreeNode
 
 public abstract class Decorator : TreeNode
 {
-	public TreeNode _child = new NullNode();
+	public TreeNode _child;
 
-	public override int Serialize( List<BehaviorTree.SerializedNode> serializeList )
+	void OnEnable()
 	{
-		int index = serializeList.Count;
-		serializeList.Add( new BehaviorTree.SerializedNode()
-		{
-			typename = GetType().AssemblyQualifiedName,
-			children = new List<int>()
-		} );
-
-		BehaviorTree.SerializedNode serializedNode = serializeList[index];
-		serializedNode.children.Add( _child.Serialize( serializeList ) );
-		return index;
-	}
-
-	public override void SetChildren( List<TreeNode> childs )
-	{
-		if ( childs.Count != 1 )
-		{
-			throw new ArgumentException( "A decorator can only have one child." );
-		}
-
-		_child = childs[0];
+		_child = BehaviorTreeEditor.nullNode;
 	}
 
 	public override void OnGUI()
@@ -219,34 +157,11 @@ public class Fail : Decorator
 
 public abstract class Compositor : TreeNode
 {
-	public List<TreeNode> _children = new List<TreeNode>() { new NullNode() };
+	public List<TreeNode> _children;
 
-	public override int Serialize( List<BehaviorTree.SerializedNode> serializeList )
+	void OnEnable()
 	{
-		int index = serializeList.Count;
-
-		serializeList.Add( new BehaviorTree.SerializedNode()
-		{
-			typename = GetType().AssemblyQualifiedName,
-			children = new List<int>()
-		} );
-
-		foreach ( TreeNode child in _children )
-		{
-			serializeList[index].children.Add( child.Serialize( serializeList ) );
-		}
-
-		return index;
-	}
-
-	public override void SetChildren( List<TreeNode> childs )
-	{
-		if ( childs.Count == 0 )
-		{
-			throw new ArgumentException( "A compositor must have at least one child." );
-		}
-
-		_children = childs;
+		_children = new List<TreeNode>() { BehaviorTreeEditor.nullNode };
 	}
 
 	public override void OnGUI()
@@ -361,7 +276,7 @@ public class Selector : Compositor
 
 public class Subtree
 {
-	public TreeNode root = new NullNode();
+	public TreeNode root;
 
 	private Hashtable _data;
 	private Stack<TreeNode> _executionStack;
@@ -428,40 +343,10 @@ public class Subtree
 	}
 }
 
-public abstract class Parallel : TreeNode
+public abstract class Parallel : TreeNode, ISerializationCallbackReceiver
 {
 	public List<Subtree> _children = new List<Subtree>();
-
-	public override int Serialize( List<BehaviorTree.SerializedNode> serializeList )
-	{
-		int index = serializeList.Count;
-
-		serializeList.Add( new BehaviorTree.SerializedNode()
-		{
-			typename = GetType().AssemblyQualifiedName,
-			children = new List<int>()
-		} );
-
-		foreach ( Subtree subtree in _children )
-		{
-			serializeList[index].children.Add( subtree.root.Serialize( serializeList ) );
-		}
-
-		return index;
-	}
-
-	public override void SetChildren( List<TreeNode> childs )
-	{
-		if ( childs.Count == 0 )
-		{
-			throw new ArgumentException( "A compositor must have at least one child." );
-		}
-
-		foreach ( TreeNode child in childs )
-		{
-			_children.Add( new Subtree( child ) );
-		}
-	}
+	public List<TreeNode> _serializedChildren;
 
 	public override void OnGUI()
 	{
@@ -481,11 +366,30 @@ public abstract class Parallel : TreeNode
 
 		if ( GUILayout.Button( "Add Child" ) )
 		{
-			_children.Add( new Subtree( new NullNode() ) );
+			_children.Add( new Subtree( BehaviorTreeEditor.nullNode ) );
 		}
 
 		--EditorGUI.indentLevel;
 		#endif
+	}
+
+	// let's just pretend the subtrees aren't there
+	public void OnBeforeSerialize()
+	{
+		_serializedChildren = new List<TreeNode>();
+		foreach ( Subtree subtree in _children )
+		{
+			_serializedChildren.Add( subtree.root );
+		}
+	}
+
+	public void OnAfterDeserialize()
+	{
+		_children = new List<Subtree>();
+		foreach ( TreeNode child in _serializedChildren )
+		{
+			_children.Add( new Subtree( child ) );
+		}
 	}
 }
 
@@ -542,25 +446,6 @@ public class SequenceParallel : Parallel
 
 public abstract class LeafNode : TreeNode
 {
-	public override int Serialize( List<BehaviorTree.SerializedNode> serializeList )
-	{
-		serializeList.Add( new BehaviorTree.SerializedNode()
-		{
-			typename = GetType().AssemblyQualifiedName,
-			children = new List<int>()
-		} );
-
-		return serializeList.Count - 1;
-	}
-
-	public override void SetChildren( List<TreeNode> childs )
-	{
-		if ( childs.Count > 0 )
-		{
-			throw new NotImplementedException();
-		}
-	}
-
 	public override void OnGUI() { }
 
 	public override TreeNode Init( Hashtable data )
