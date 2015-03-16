@@ -41,20 +41,22 @@ public abstract class Decorator : TreeNode
 {
 	public TreeNode _child;
 
-	void OnEnable()
-	{
-		_child = BehaviorTreeEditor.nullNode;
-	}
-
 	public override void OnGUI()
 	{
 		#if UNITY_EDITOR
 		++EditorGUI.indentLevel;
 
 		Type resultType = BehaviorTreeEditor.CreateNodeTypeSelector( _child );
-		if ( resultType != _child.GetType() )
+		if ( _child )
 		{
-			BehaviorTreeEditor.DeleteNode( _child );
+			if ( resultType != _child.GetType() )
+			{
+				BehaviorTreeEditor.DeleteNode( _child );
+				_child = BehaviorTreeEditor.CreateNode( resultType );
+			}
+		}
+		else
+		{
 			_child = BehaviorTreeEditor.CreateNode( resultType );
 		}
 
@@ -343,12 +345,17 @@ public abstract class Parallel : Compositor
 
 	public override TreeNode Init( Hashtable data )
 	{
-		_subtrees = new List<Subtree>();
-		foreach ( TreeNode child in _children )
+		if ( _subtrees.Count != _children.Count )
 		{
-			Subtree subtree = new Subtree( child );
-			_subtrees.Add( subtree );
-			subtree.Start( data );
+			// If we don't have the right number of subtrees,
+			// recreate the subtree list.
+			_subtrees = new List<Subtree>();
+			foreach ( TreeNode child in _children )
+			{
+				Subtree subtree = new Subtree( child );
+				_subtrees.Add( subtree );
+				subtree.Start( data );
+			}
 		}
 
 		return null; // pretend we're a leaf node, we need to be ticked every frame

@@ -118,7 +118,7 @@ public class BehaviorTreeEditor : EditorWindow
 
 	public static Type CreateNodeTypeSelector( TreeNode node )
 	{
-		int selectedType = ( node != null ? Array.IndexOf<Type>( nodeTypes, node.GetType() ) : 0 );
+		int selectedType = ( node != null ? Array.IndexOf<Type>( nodeTypes, node.GetType() ) : Array.IndexOf<Type>( nodeTypes, typeof( NullNode ) ) );
 		selectedType = EditorGUILayout.Popup( "<---->", selectedType, nodeTypeNames );
 		return nodeTypes[selectedType];
 	}

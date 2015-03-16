@@ -10,10 +10,13 @@ public class AIController : MonoBehaviour
 	private Hashtable _data = new Hashtable();
 	private Stack<TreeNode> _executionStack = new Stack<TreeNode>();
 
+	[ReadOnly]
+	public TreeNode currentLeaf;
+
 	void Awake()
 	{
 		_data["gameObject"] = gameObject;
-		behavior = (BehaviorTree)ScriptableObject.Instantiate( behavior );
+		//behavior = (BehaviorTree)ScriptableObject.Instantiate( behavior );
 	}
 
 	void Start()
@@ -36,8 +39,16 @@ public class AIController : MonoBehaviour
 				case NodeStatus.SUCCESS:
 				case NodeStatus.FAILURE:
 					// node is done, return to parent
-					_executionStack.Pop();
-					break;
+					if ( PopExecutionStack() )
+					{
+						break;
+					}
+					else
+					{
+						Debug.Log( "AIController exited with status " + status );
+						enabled = false;
+						return;
+					}
 
 				case NodeStatus.RUNNING_CHILDREN:
 					// rebuild the stack with new children
@@ -61,5 +72,25 @@ public class AIController : MonoBehaviour
 			_executionStack.Push( child );
 			child = child.Init( _data );
 		}
+
+		currentLeaf = _executionStack.Peek();
+	}
+
+	/**
+	 * @returns
+	 *     True if there are still more nodes on the stack,
+	 *     false otherwise.
+	 */
+	bool PopExecutionStack()
+	{
+		_executionStack.Pop();
+
+		if ( _executionStack.Count > 0 )
+		{
+			currentLeaf = _executionStack.Peek();
+			return true;
+		}
+
+		return false;
 	}
 }
