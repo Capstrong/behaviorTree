@@ -95,6 +95,8 @@ public class BehaviorTreeEditor : EditorWindow
 
 	void CreateNodeGUI( TreeNode node )
 	{
+		DebugUtils.Assert( node, "Cannot create GUI for null node!" );
+
 		++EditorGUI.indentLevel;
 		
 		if ( node is Decorator )
