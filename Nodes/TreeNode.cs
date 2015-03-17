@@ -54,8 +54,12 @@ namespace BehaviorTree
 				{
 					Subtree subtree = new Subtree( child );
 					_subtrees.Add( subtree );
-					subtree.Start( data );
 				}
+			}
+
+			foreach ( Subtree subtree in _subtrees )
+			{
+				subtree.Start( data );
 			}
 
 			return null; // pretend we're a leaf node, we need to be ticked every frame

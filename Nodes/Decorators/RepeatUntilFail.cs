@@ -5,11 +5,8 @@ namespace BehaviorTree
 {
 	public sealed class RepeatUntilFail : Decorator
 	{
-		private Hashtable _data;
-
 		public override TreeNode Init( Hashtable data )
 		{
-			_data = data;
 			return base.Init( data );
 		}
 
@@ -21,7 +18,6 @@ namespace BehaviorTree
 					return NodeStatus.SUCCESS;
 
 				case NodeStatus.SUCCESS:
-					_child.Init( _data );
 					return NodeStatus.RUNNING_CHILDREN;
 
 				case NodeStatus.RUNNING:

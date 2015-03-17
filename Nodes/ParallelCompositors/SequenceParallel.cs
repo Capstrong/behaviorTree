@@ -1,4 +1,5 @@
-﻿using System.Collections;
+﻿using UnityEngine;
+using System.Collections;
 
 namespace BehaviorTree
 {
@@ -31,7 +32,10 @@ namespace BehaviorTree
 
 						// restart a subtree if it succeeds
 						subtree.Start( _data );
-						if ( successes == _subtrees.Count ) return NodeStatus.SUCCESS;
+						if ( successes == _subtrees.Count )
+						{
+							return NodeStatus.SUCCESS;
+						}
 						break;
 
 					case NodeStatus.RUNNING:
@@ -39,6 +43,7 @@ namespace BehaviorTree
 						break;
 				}
 			}
+
 			return NodeStatus.RUNNING;
 		}
 	}
