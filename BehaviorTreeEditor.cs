@@ -7,6 +7,8 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 
+namespace BehaviorTree
+{
 public class BehaviorTreeEditor : EditorWindow
 {
 	public static Type[] nodeTypes;
@@ -208,9 +210,7 @@ public class BehaviorTreeEditor : EditorWindow
 	public static BehaviorTree CloneTree( BehaviorTree behaviorTree )
 	{
 		BehaviorTree treeClone = Instantiate<BehaviorTree>( behaviorTree );
-
 		treeClone.root = CloneNode( behaviorTree.root );
-
 		return treeClone;
 	}
 
@@ -230,10 +230,12 @@ public class BehaviorTreeEditor : EditorWindow
 				cloneChildren.Add( (TreeNode)CloneNode( child ) );
 			}
 
-			( (Compositor)node )._children = cloneChildren;
+			( (Compositor)nodeClone )._children = cloneChildren;
 		}
 
 		return nodeClone;
 	}
+}
+	
 }
 #endif
