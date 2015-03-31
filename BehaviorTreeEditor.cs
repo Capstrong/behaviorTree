@@ -23,9 +23,13 @@ public class BehaviorTreeEditor : EditorWindow
 		}
 	}
 
+	Dictionary<TreeNode, EditorNode> _editorData = new Dictionary<TreeNode,EditorNode>();
+
 	private const int _itemHeight = 20;
 	private const int _indentSize = 10;
-	private static int indentLevel = 0;
+	private const int _foldoutWidth = 80;
+
+	private int _indentLevel = 0;
 
 	/**
 	 * @brief Add a menu item in the editor for creating new behavior tree assets.
@@ -104,7 +108,7 @@ public class BehaviorTreeEditor : EditorWindow
 	{
 		DebugUtils.Assert( node, "Cannot create GUI for null node!" );
 
-		++indentLevel;
+		++_indentLevel;
 		
 		if ( node is Decorator )
 		{
@@ -115,51 +119,60 @@ public class BehaviorTreeEditor : EditorWindow
 			height = CreateCompositorGUI( (Compositor)node, height );
 		}
 
-		--indentLevel;
+		--_indentLevel;
 
 		return height;
 	}
 
 	int CreateDecoratorGUI( Decorator node, int height )
 	{
-
-		Type resultType = CreateNodeTypeSelector( node._child, height );
-		if ( node._child )
+		if ( CreateChildrenFoldout( node, height ) )
 		{
-			if ( resultType != node._child.GetType() )
+			Type resultType = CreateNodeTypeSelector( node._child, height );
+			if ( node._child )
 			{
-				BehaviorTreeEditor.DeleteNode( node._child );
+				if ( resultType != node._child.GetType() )
+				{
+					BehaviorTreeEditor.DeleteNode( node._child );
+					node._child = BehaviorTreeEditor.CreateNode( resultType );
+				}
+			}
+			else
+			{
 				node._child = BehaviorTreeEditor.CreateNode( resultType );
 			}
+
+			return CreateNodeGUI( node._child, ++height );
 		}
 		else
 		{
-			node._child = BehaviorTreeEditor.CreateNode( resultType );
+			return height;
 		}
-
-		return CreateNodeGUI( node._child, ++height );
 	}
 
 	int CreateCompositorGUI( Compositor node, int height )
 	{
-		for ( int childIndex = 0; childIndex < node._children.Count; ++childIndex )
+		if ( CreateChildrenFoldout( node, height ) )
 		{
-			Type resultType = CreateNodeTypeSelector( node._children[childIndex], height );
-			if ( resultType != node._children[childIndex].GetType() )
+			for ( int childIndex = 0; childIndex < node._children.Count; ++childIndex )
 			{
-				BehaviorTreeEditor.DeleteNode( node._children[childIndex] );
-				node._children[childIndex] = BehaviorTreeEditor.CreateNode( resultType );
+				Type resultType = CreateNodeTypeSelector( node._children[childIndex], height );
+				if ( resultType != node._children[childIndex].GetType() )
+				{
+					BehaviorTreeEditor.DeleteNode( node._children[childIndex] );
+					node._children[childIndex] = BehaviorTreeEditor.CreateNode( resultType );
+				}
+
+				height = CreateNodeGUI( node._children[childIndex], ++height );
 			}
 
-			height = CreateNodeGUI( node._children[childIndex], ++height );
+			Rect rect = new Rect( _indentLevel * _indentSize + _foldoutWidth, height * _itemHeight, 200, _itemHeight - 5 );
+			if ( GUI.Button( rect, "Add Child" ) )
+			{
+				node._children.Add( BehaviorTreeEditor.nullNode );
+			}
+			++height;
 		}
-
-		Rect rect = new Rect( indentLevel * _indentSize, height * _itemHeight, 200, _itemHeight - 5 );
-		if ( GUI.Button( rect, "Add Child" ) )
-		{
-			node._children.Add( BehaviorTreeEditor.nullNode );
-		}
-		++height;
 
 		return height;
 	}
@@ -195,9 +208,23 @@ public class BehaviorTreeEditor : EditorWindow
 	public Type CreateNodeTypeSelector( TreeNode node, int height )
 	{
 		int selectedType = ( node != null ? Array.IndexOf<Type>( nodeTypes, node.GetType() ) : Array.IndexOf<Type>( nodeTypes, typeof( NullNode ) ) );
-		Rect rect = new Rect( indentLevel * _indentSize, height * _itemHeight, 200, _itemHeight );
+		Rect rect = new Rect( _indentLevel * _indentSize + _foldoutWidth, height * _itemHeight, 200, _itemHeight );
 		selectedType = EditorGUI.Popup( rect, selectedType, nodeTypeNames );
 		return nodeTypes[selectedType];
+	}
+
+	public bool CreateChildrenFoldout( TreeNode node, int height )
+	{
+		if ( !_editorData.ContainsKey( node ) )
+		{
+			_editorData.Add( node, new EditorNode() );
+		}
+
+		EditorNode nodeData = _editorData[node];
+
+		Rect rect = new Rect( _indentLevel * _indentSize, ( height - 1 ) * _itemHeight, _foldoutWidth, _itemHeight );
+		nodeData.foldout = EditorGUI.Foldout( rect, nodeData.foldout, "children", true );
+		return nodeData.foldout;
 	}
 
 	public static TreeNode CreateNode( Type nodeType )
@@ -247,6 +274,11 @@ public class BehaviorTreeEditor : EditorWindow
 
 		return nodeClone;
 	}
+}
+
+class EditorNode
+{
+	public bool foldout = true;
 }
 }
 #endif
