@@ -23,6 +23,10 @@ public class BehaviorTreeEditor : EditorWindow
 		}
 	}
 
+	private const int _itemHeight = 20;
+	private const int _indentSize = 10;
+	private static int indentLevel = 0;
+
 	/**
 	 * @brief Add a menu item in the editor for creating new behavior tree assets.
 	 *
@@ -56,6 +60,7 @@ public class BehaviorTreeEditor : EditorWindow
 		try
 		{
 			CreateGUI();
+			AssetDatabase.SaveAssets();
 		}
 		catch ( Exception e )
 		{
@@ -84,39 +89,41 @@ public class BehaviorTreeEditor : EditorWindow
 
 			GUILayout.Label( "Nodes", EditorStyles.boldLabel );
 
-			Type resultType = CreateNodeTypeSelector( _behaviorTree.root );
+			Type resultType = CreateNodeTypeSelector( _behaviorTree.root, 2 );
 			if ( resultType != _behaviorTree.root.GetType() )
 			{
 				DeleteNode( _behaviorTree.root );
 				_behaviorTree.root = CreateNode( resultType );
 			}
 			
-			CreateNodeGUI( _behaviorTree.root );
+			CreateNodeGUI( _behaviorTree.root, 3 );
 		}
 	}
 
-	void CreateNodeGUI( TreeNode node )
+	int CreateNodeGUI( TreeNode node, int height )
 	{
 		DebugUtils.Assert( node, "Cannot create GUI for null node!" );
 
-		++EditorGUI.indentLevel;
+		++indentLevel;
 		
 		if ( node is Decorator )
 		{
-			CreateDecoratorGUI( (Decorator)node );
+			height = CreateDecoratorGUI( (Decorator)node, height );
 		}
 		else if ( node is Compositor )
 		{
-			CreateCompositorGUI( (Compositor)node );
+			height = CreateCompositorGUI( (Compositor)node, height );
 		}
 
-		--EditorGUI.indentLevel;
+		--indentLevel;
+
+		return height;
 	}
 
-	void CreateDecoratorGUI( Decorator node )
+	int CreateDecoratorGUI( Decorator node, int height )
 	{
 
-		Type resultType = BehaviorTreeEditor.CreateNodeTypeSelector( node._child );
+		Type resultType = CreateNodeTypeSelector( node._child, height );
 		if ( node._child )
 		{
 			if ( resultType != node._child.GetType() )
@@ -130,27 +137,31 @@ public class BehaviorTreeEditor : EditorWindow
 			node._child = BehaviorTreeEditor.CreateNode( resultType );
 		}
 
-		CreateNodeGUI( node._child );
+		return CreateNodeGUI( node._child, ++height );
 	}
 
-	void CreateCompositorGUI( Compositor node )
+	int CreateCompositorGUI( Compositor node, int height )
 	{
 		for ( int childIndex = 0; childIndex < node._children.Count; ++childIndex )
 		{
-			Type resultType = BehaviorTreeEditor.CreateNodeTypeSelector( node._children[childIndex] );
+			Type resultType = CreateNodeTypeSelector( node._children[childIndex], height );
 			if ( resultType != node._children[childIndex].GetType() )
 			{
 				BehaviorTreeEditor.DeleteNode( node._children[childIndex] );
 				node._children[childIndex] = BehaviorTreeEditor.CreateNode( resultType );
 			}
 
-			CreateNodeGUI( node._children[childIndex] );
+			height = CreateNodeGUI( node._children[childIndex], ++height );
 		}
 
-		if ( GUILayout.Button( "Add Child" ) )
+		Rect rect = new Rect( indentLevel * _indentSize, height * _itemHeight, 200, _itemHeight - 5 );
+		if ( GUI.Button( rect, "Add Child" ) )
 		{
 			node._children.Add( BehaviorTreeEditor.nullNode );
 		}
+		++height;
+
+		return height;
 	}
 
 	void CreateTypeLists()
@@ -181,10 +192,11 @@ public class BehaviorTreeEditor : EditorWindow
 		DestroyImmediate( parentNode, true );
 	}
 
-	public static Type CreateNodeTypeSelector( TreeNode node )
+	public Type CreateNodeTypeSelector( TreeNode node, int height )
 	{
 		int selectedType = ( node != null ? Array.IndexOf<Type>( nodeTypes, node.GetType() ) : Array.IndexOf<Type>( nodeTypes, typeof( NullNode ) ) );
-		selectedType = EditorGUILayout.Popup( "<---->", selectedType, nodeTypeNames );
+		Rect rect = new Rect( indentLevel * _indentSize, height * _itemHeight, 200, _itemHeight );
+		selectedType = EditorGUI.Popup( rect, selectedType, nodeTypeNames );
 		return nodeTypes[selectedType];
 	}
 
@@ -236,6 +248,5 @@ public class BehaviorTreeEditor : EditorWindow
 		return nodeClone;
 	}
 }
-	
 }
 #endif
