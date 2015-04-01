@@ -98,6 +98,7 @@ public class BehaviorTreeEditor : EditorWindow
 		if ( node == null )
 		{
 			Debug.LogError( "Node is null!" );
+			return;
 		}
 
 		EditorNode nodeData = _behaviorTree._editorData[node.id];
@@ -166,7 +167,8 @@ public class BehaviorTreeEditor : EditorWindow
 			Rect rect = new Rect( 0, 30, nodeData.nodeRect.width, 20 );
 			if ( GUI.Button( rect, "Add Child" ) )
 			{
-				compositor._children.Add( CreateNodeWithParent( typeof( NullNode ), compositor ) );
+				TreeNode childNode = CreateNodeWithParent( typeof( NullNode ), compositor );
+				compositor._children.Add( childNode );
 			}
 		}
 
@@ -300,8 +302,8 @@ public class BehaviorTreeEditor : EditorWindow
 	{
 		TreeNode newNode = CreateNode( nodeType );
 
-		// Give new node old node's id
-		newNode.id = nodeData.id;
+		// Use ID of new node, rather than reusing old node
+		nodeData.id = newNode.id;
 
 		// Give node data a reference to the new node
 		nodeData.node = newNode;
@@ -360,6 +362,11 @@ public class EditorNode
 		this.node = node;
 		this.parent = parent;
 		this.id = node.id;
+
+		if ( parent is Compositor )
+		{
+			parentIndex = ( (Compositor)parent )._children.Count;
+		}
 	}
 
 	public int id = 0;
