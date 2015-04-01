@@ -120,8 +120,20 @@ public class BehaviorTreeEditor : EditorWindow
 
 			// handle drawing the child
 			DrawNodeCurve( nodeData.nodeRect, childData.nodeRect );
-
 			DrawNode( decorator._child );
+		}
+		else if ( node is Compositor )
+		{
+			Compositor compositor = (Compositor)node;
+
+			foreach ( TreeNode child in compositor._children )
+			{
+				EditorNode childData = _behaviorTree._editorData[child.id];
+
+				// handle drawing child
+				DrawNodeCurve( nodeData.nodeRect, childData.nodeRect );
+				DrawNode( child );
+			}
 		}
 	}
 
@@ -145,6 +157,17 @@ public class BehaviorTreeEditor : EditorWindow
 		if ( selectedType != node.GetType() )
 		{
 			ReplaceNode( nodeData, selectedType );
+		}
+
+		if ( node is Compositor )
+		{
+			Compositor compositor = (Compositor)node;
+
+			Rect rect = new Rect( 0, 30, nodeData.nodeRect.width, 20 );
+			if ( GUI.Button( rect, "Add Child" ) )
+			{
+				compositor._children.Add( CreateNodeWithParent( typeof( NullNode ), compositor ) );
+			}
 		}
 
 		// Drag window last because otherwise you can't click on things
