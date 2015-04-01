@@ -23,8 +23,6 @@ public class BehaviorTreeEditor : EditorWindow
 		}
 	}
 
-	Dictionary<TreeNode, EditorNode> _editorData = new Dictionary<TreeNode,EditorNode>();
-
 	/**
 	 * @brief Add a menu item in the editor for creating new behavior tree assets.
 	 *
@@ -89,24 +87,41 @@ public class BehaviorTreeEditor : EditorWindow
 
 	void CreateGUI()
 	{
+		BeginWindows();
 		DrawNode( _behaviorTree.root );
+		EndWindows();
 	}
 
 	void DrawNode( TreeNode node )
 	{
-		// ensure that there's an editor node for this node
-		if ( !_editorData.ContainsKey( node ) )
+		if ( node == null )
 		{
-			_editorData.Add( node, new EditorNode( node, null, _editorData.Count ) );
+			Debug.LogError( "Node is null!" );
 		}
 
-		EditorNode nodeData = _editorData[node];
+		EditorNode nodeData = _behaviorTree._editorData[node];
 
-		BeginWindows();
+		// draw window
+		nodeData.nodeRect = GUI.Window( nodeData.id, nodeData.nodeRect, DrawNodeWindow, DisplayName( node.ToString() ) );
+
+		// handle children
+		if ( node is Decorator )
 		{
-			nodeData.nodeRect = GUI.Window( nodeData.id, nodeData.nodeRect, DrawNodeWindow, DisplayName( node.ToString() ) );
+			Decorator decorator = (Decorator)node;
+			
+			// ensure that the node has a child
+			if ( !decorator._child )
+			{
+				decorator._child = CreateNode( typeof( NullNode ), decorator );
+			}
+
+			EditorNode childData = _behaviorTree._editorData[decorator._child];
+
+			// handle drawing the child
+			DrawNodeCurve( nodeData.nodeRect, childData.nodeRect );
+
+			DrawNode( decorator._child );
 		}
-		EndWindows();
 	}
 
 	static string DisplayName( string name )
@@ -122,7 +137,7 @@ public class BehaviorTreeEditor : EditorWindow
 	void DrawNodeWindow( int id )
 	{
 		// Get EditorNode
-		EditorNode nodeData = _editorData.Values.First( editorNode => editorNode.id == id );
+		EditorNode nodeData = _behaviorTree._editorData.Values.First( editorNode => editorNode.id == id );
 		TreeNode node = nodeData.node;
 
 		Type selectedType = CreateNodeTypeSelector( node );
@@ -137,17 +152,16 @@ public class BehaviorTreeEditor : EditorWindow
 
 	void ReplaceNode( EditorNode nodeData, Type newType )
 	{
+		DeleteNode( nodeData.node );
+
 		if ( nodeData.parent )
 		{
-			// TODO: replace child node
+			// TODO: Replace child node.
 		}
 		else
 		{
-			// Node is root node
-			_editorData.Remove( nodeData.node );
-			DeleteNode( nodeData.node );
-			nodeData.node = CreateNode( newType );
-			_editorData.Add( nodeData.node, nodeData );
+			// Node is root node.
+			nodeData.node = CreateNode( newType, nodeData );
 			_behaviorTree.root = nodeData.node;
 		}
 	}
@@ -180,21 +194,22 @@ public class BehaviorTreeEditor : EditorWindow
 				delegate( Type type ) { return DisplayName( type.ToString() ); } ) );
 	}
 
-	public static void DeleteNode( TreeNode parentNode )
+	public void DeleteNode( TreeNode node )
 	{
-		if ( parentNode is Decorator )
+		if ( node is Decorator )
 		{
-			DeleteNode( ( (Decorator)parentNode )._child );
+			DeleteNode( ( (Decorator)node )._child );
 		}
-		else if ( parentNode is Compositor )
+		else if ( node is Compositor )
 		{
-			foreach ( TreeNode child in ( (Compositor)parentNode )._children )
+			foreach ( TreeNode child in ( (Compositor)node )._children )
 			{
 				DeleteNode( child );
 			}
 		}
 
-		DestroyImmediate( parentNode, true );
+		_behaviorTree._editorData.Remove( node );
+		DestroyImmediate( node, true );
 	}
 
 	public Type CreateNodeTypeSelector( TreeNode node )
@@ -207,14 +222,14 @@ public class BehaviorTreeEditor : EditorWindow
 
 	public bool CreateChildrenFoldout( TreeNode node, int height )
 	{
-		EditorNode nodeData = _editorData[node];
+		EditorNode nodeData = _behaviorTree._editorData[node];
 
 		Rect rect = new Rect( 0, 0, 100, 20 );
 		nodeData.foldout = EditorGUI.Foldout( rect, nodeData.foldout, "children", true );
 		return nodeData.foldout;
 	}
 
-	public static TreeNode CreateNode( Type nodeType )
+	public TreeNode CreateNode( Type nodeType )
 	{
 		DebugUtils.Assert( _instance, "Cannot create a node without a current editor instance!" );
 		DebugUtils.Assert( _instance._behaviorTree, "Can't create a node without an asset to add it to!" );
@@ -222,10 +237,29 @@ public class BehaviorTreeEditor : EditorWindow
 		TreeNode newNode = (TreeNode)ScriptableObject.CreateInstance( nodeType );
 		AssetDatabase.AddObjectToAsset( newNode, _instance._behaviorTree );
 		EditorUtility.SetDirty( _instance._behaviorTree );
+		
+		_behaviorTree._editorData.Add( newNode, new EditorNode( newNode, null, _behaviorTree._editorData.Count ) );
+
 		return newNode;
 	}
 
-	public static TreeNode nullNode
+	public TreeNode CreateNode( Type nodeType, TreeNode parent )
+	{
+		TreeNode newNode = CreateNode( nodeType );
+		_behaviorTree._editorData[newNode] = new EditorNode( newNode, parent, _behaviorTree._editorData.Count );
+		return newNode;
+	}
+
+	public TreeNode CreateNode( Type nodeType, EditorNode nodeData )
+	{
+		TreeNode newNode = CreateNode( nodeType, nodeData.parent );
+		nodeData.node = newNode;
+		_behaviorTree._editorData[newNode] = nodeData;
+
+		return newNode;
+	}
+
+	public TreeNode nullNode
 	{
 		get
 		{
@@ -262,8 +296,11 @@ public class BehaviorTreeEditor : EditorWindow
 		return nodeClone;
 	}
 }
-
-class EditorNode
+}
+#endif
+namespace BehaviorTree
+{
+public class EditorNode
 {
 	public EditorNode( TreeNode node, TreeNode parent, int id )
 	{
@@ -280,4 +317,3 @@ class EditorNode
 	public bool foldout = true;
 }
 }
-#endif

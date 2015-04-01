@@ -11,6 +11,8 @@ namespace BehaviorTree
 
 		private Subtree _subtree;
 
+		public Dictionary<TreeNode, EditorNode> _editorData = new Dictionary<TreeNode, EditorNode>();
+
 		public void Init( Hashtable data )
 		{
 			_subtree = new Subtree( root );
