@@ -11,7 +11,8 @@ namespace BehaviorTree
 
 		private Subtree _subtree;
 
-		public Dictionary<TreeNode, EditorNode> _editorData = new Dictionary<TreeNode, EditorNode>();
+		// This is purely for editor purposes, but it also kind needs to always be there.
+		public Dictionary<int, EditorNode> _editorData = new Dictionary<int, EditorNode>();
 
 		public void Init( Hashtable data )
 		{
