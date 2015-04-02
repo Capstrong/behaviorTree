@@ -5,6 +5,9 @@ using System.Collections.Generic;
 
 namespace BehaviorTree
 {
+	[Serializable]
+	public class EditorDataDict : SerializableDictionary<int, EditorData> { }
+
 	public class BehaviorTree : ScriptableObject
 	{
 		public TreeNode root;
@@ -12,7 +15,7 @@ namespace BehaviorTree
 		private Subtree _subtree;
 
 		// This is purely for editor purposes, but it also kind needs to always be there.
-		public Dictionary<int, EditorNode> _editorData = new Dictionary<int, EditorNode>();
+		public EditorDataDict _editorData = new EditorDataDict();
 
 		public void Init( Hashtable data )
 		{
