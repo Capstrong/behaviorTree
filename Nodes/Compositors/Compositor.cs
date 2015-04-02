@@ -29,7 +29,6 @@ namespace BehaviorTree
 					}
 					return NodeStatus.RUNNING_CHILDREN;
 
-				case NodeStatus.RUNNING:
 				default:
 					return NodeStatus.RUNNING;
 			}

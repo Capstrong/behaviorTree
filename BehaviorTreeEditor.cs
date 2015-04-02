@@ -23,7 +23,7 @@ public class BehaviorTreeEditor : EditorWindow
 		}
 	}
 
-	Dictionary<TreeNode, EditorNode> _editorData = new Dictionary<TreeNode,EditorNode>();
+	Dictionary<TreeNode, EditorNode> _editorData = new Dictionary<TreeNode, EditorNode>();
 
 	private const int _itemHeight = 20;
 	private const int _indentSize = 10;
@@ -93,7 +93,7 @@ public class BehaviorTreeEditor : EditorWindow
 
 			GUILayout.Label( "Nodes", EditorStyles.boldLabel );
 
-			Type resultType = CreateNodeTypeSelector( _behaviorTree.root, 2 );
+			Type resultType = CreateNodeTypeDropdown( _behaviorTree.root, 2 );
 			if ( resultType != _behaviorTree.root.GetType() )
 			{
 				DeleteNode( _behaviorTree.root );
@@ -128,7 +128,7 @@ public class BehaviorTreeEditor : EditorWindow
 	{
 		if ( CreateChildrenFoldout( node, height ) )
 		{
-			Type resultType = CreateNodeTypeSelector( node._child, height );
+			Type resultType = CreateNodeTypeDropdown( node._child, height );
 			if ( node._child )
 			{
 				if ( resultType != node._child.GetType() )
@@ -156,7 +156,7 @@ public class BehaviorTreeEditor : EditorWindow
 		{
 			for ( int childIndex = 0; childIndex < node._children.Count; ++childIndex )
 			{
-				Type resultType = CreateNodeTypeSelector( node._children[childIndex], height );
+				Type resultType = CreateNodeTypeDropdown( node._children[childIndex], height );
 				if ( resultType != node._children[childIndex].GetType() )
 				{
 					BehaviorTreeEditor.DeleteNode( node._children[childIndex] );
@@ -205,7 +205,7 @@ public class BehaviorTreeEditor : EditorWindow
 		DestroyImmediate( parentNode, true );
 	}
 
-	public Type CreateNodeTypeSelector( TreeNode node, int height )
+	public Type CreateNodeTypeDropdown( TreeNode node, int height )
 	{
 		int selectedType = ( node != null ? Array.IndexOf<Type>( nodeTypes, node.GetType() ) : Array.IndexOf<Type>( nodeTypes, typeof( NullNode ) ) );
 		Rect rect = new Rect( _indentLevel * _indentSize + _foldoutWidth, height * _itemHeight, 200, _itemHeight );

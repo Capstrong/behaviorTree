@@ -41,7 +41,6 @@ namespace BehaviorTree
 					return NodeStatus.FAILURE;
 
 				default:
-				case NodeStatus.RUNNING:
 					return NodeStatus.RUNNING;
 			}
 		}

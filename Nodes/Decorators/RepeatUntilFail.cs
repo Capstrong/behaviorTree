@@ -5,11 +5,6 @@ namespace BehaviorTree
 {
 	public sealed class RepeatUntilFail : Decorator
 	{
-		public override TreeNode Init( Hashtable data )
-		{
-			return base.Init( data );
-		}
-
 		public override NodeStatus Tick( NodeStatus childStatus )
 		{
 			switch ( childStatus )
