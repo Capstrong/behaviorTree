@@ -15,13 +15,7 @@ public class BehaviorTreeEditor : EditorWindow
 	public static String[] nodeTypeNames;
 
 	private BehaviorTree _behaviorTree;
-	private static BehaviorTreeEditor _instance
-	{
-		get
-		{
-			return EditorWindow.GetWindow<BehaviorTreeEditor>();
-		}
-	}
+	private Dictionary<int, EditorData> _editorData = new Dictionary<int, EditorData>();
 
 	/**
 	 * @brief Add a menu item in the editor for creating new behavior tree assets.
@@ -51,6 +45,16 @@ public class BehaviorTreeEditor : EditorWindow
 		EditorWindow.GetWindow<BehaviorTreeEditor>();
 	}
 
+	void BuildEditorData()
+	{
+		_editorData.Clear();
+
+		foreach ( EditorData editorData in _behaviorTree._editorData )
+		{
+			_editorData.Add( editorData.id, editorData );
+		}
+	}
+
 	void OnGUI()
 	{
 		try
@@ -75,9 +79,9 @@ public class BehaviorTreeEditor : EditorWindow
 					_behaviorTree.root = CreateNodeWithoutParent( typeof( NullNode ) );
 				}
 
-				CreateGUI();
+				BuildEditorData();
 
-				AssetDatabase.SaveAssets();
+				CreateGUI();
 			}
 		}
 		catch ( Exception e )
@@ -101,10 +105,15 @@ public class BehaviorTreeEditor : EditorWindow
 			return;
 		}
 
-		EditorData nodeData = _behaviorTree._editorData[node.id]; // TODO: Crash here after the editor resets.
+		EditorData nodeData = _editorData[node.id]; // TODO: Crash here after the editor resets.
 
 		// draw window
-		nodeData.nodeRect = GUI.Window( nodeData.id, nodeData.nodeRect, DrawNodeWindow, DisplayName( node.ToString() ) );
+		Rect resultRect = GUI.Window( nodeData.id, nodeData.nodeRect, DrawNodeWindow, DisplayName( node.ToString() ) );
+		if ( resultRect != nodeData.nodeRect )
+		{
+			nodeData.nodeRect = resultRect;
+			EditorUtility.SetDirty( _behaviorTree );
+		}
 
 		// handle children
 		if ( node is Decorator )
@@ -117,7 +126,7 @@ public class BehaviorTreeEditor : EditorWindow
 				decorator._child = CreateNodeWithParent( typeof( NullNode ), decorator );
 			}
 
-			EditorData childData = _behaviorTree._editorData[decorator._child.id];
+			EditorData childData = _editorData[decorator._child.id];
 
 			// handle drawing the child
 			DrawNodeCurve( nodeData.nodeRect, childData.nodeRect );
@@ -129,7 +138,7 @@ public class BehaviorTreeEditor : EditorWindow
 
 			foreach ( TreeNode child in compositor._children )
 			{
-				EditorData childData = _behaviorTree._editorData[child.id];
+				EditorData childData = _editorData[child.id];
 
 				// handle drawing child
 				DrawNodeCurve( nodeData.nodeRect, childData.nodeRect );
@@ -151,7 +160,7 @@ public class BehaviorTreeEditor : EditorWindow
 	void DrawNodeWindow( int id )
 	{
 		// Get EditorNode
-		EditorData nodeData = _behaviorTree._editorData.Values.First( editorNode => editorNode.id == id );
+		EditorData nodeData = _editorData[id];
 		TreeNode node = nodeData.node;
 
 		Type selectedType = CreateNodeTypeSelector( node );
@@ -248,7 +257,12 @@ public class BehaviorTreeEditor : EditorWindow
 			}
 		}
 
-		_behaviorTree._editorData.Remove( node.id );
+		// Remove the editor data from the list held by the behavior tree.
+		_behaviorTree._editorData.Remove( _editorData[node.id] );
+
+		// Remove the data from the local dict.
+		_editorData.Remove( node.id );
+
 		DestroyImmediate( node, true );
 	}
 
@@ -262,7 +276,7 @@ public class BehaviorTreeEditor : EditorWindow
 
 	public bool CreateChildrenFoldout( TreeNode node, int height )
 	{
-		EditorData nodeData = _behaviorTree._editorData[node.id];
+		EditorData nodeData = _editorData[node.id];
 
 		Rect rect = new Rect( 0, 0, 100, 20 );
 		nodeData.foldout = EditorGUI.Foldout( rect, nodeData.foldout, "children", true );
@@ -272,14 +286,13 @@ public class BehaviorTreeEditor : EditorWindow
 	// NOTE: Do NOT call this directly! It's a only helper function for the other CreateNode...() methods.
 	public TreeNode CreateNode( Type nodeType )
 	{
-		DebugUtils.Assert( _instance, "Cannot create a node without a current editor instance!" );
-		DebugUtils.Assert( _instance._behaviorTree, "Can't create a node without an asset to add it to!" );
+		DebugUtils.Assert( _behaviorTree, "Can't create a node without an asset to add it to!" );
 
 		TreeNode newNode = (TreeNode)ScriptableObject.CreateInstance( nodeType );
 		newNode.id = newNode.GetInstanceID(); // generate a unique ID for the node.
 
-		AssetDatabase.AddObjectToAsset( newNode, _instance._behaviorTree );
-		EditorUtility.SetDirty( _instance._behaviorTree );
+		AssetDatabase.AddObjectToAsset( newNode, _behaviorTree );
+		EditorUtility.SetDirty( _behaviorTree );
 
 		return newNode;
 	}
@@ -287,14 +300,16 @@ public class BehaviorTreeEditor : EditorWindow
 	public TreeNode CreateNodeWithParent( Type nodeType, TreeNode parent )
 	{
 		TreeNode newNode = CreateNode( nodeType );
-		_behaviorTree._editorData[newNode.id] = new EditorData( newNode, parent );
+		_behaviorTree._editorData.Add( new EditorData( newNode, parent ) );
+		BuildEditorData();
 		return newNode;
 	}
 
 	public TreeNode CreateNodeWithoutParent( Type nodeType )
 	{
 		TreeNode newNode = CreateNode( nodeType );
-		_behaviorTree._editorData[newNode.id] = new EditorData( newNode, null );
+		_behaviorTree._editorData.Add( new EditorData( newNode, null ) );
+		BuildEditorData();
 		return newNode;
 	}
 
@@ -309,7 +324,8 @@ public class BehaviorTreeEditor : EditorWindow
 		nodeData.node = newNode;
 
 		// Put new node back in the dict.
-		_behaviorTree._editorData[nodeData.id] = nodeData;
+		_behaviorTree._editorData.Add( nodeData );
+		BuildEditorData();
 
 		return newNode;
 	}
@@ -359,7 +375,7 @@ namespace BehaviorTree
 	public class EditorData
 	{
 		// NOTE: This should not be called directly.
-		public EditorData() { }
+		//public EditorData() { }
 
 		public EditorData( TreeNode node, TreeNode parent )
 		{
