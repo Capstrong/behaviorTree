@@ -3,30 +3,35 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 
+using BehaviorTree;
+
 public class AIController : MonoBehaviour
 {
-	public BehaviorTree behavior;
+	public BehaviorTree.BehaviorTree behavior;
 
-	private Hashtable data = new Hashtable();
+	private Hashtable _data = new Hashtable();
 
 	void Awake()
 	{
-		data["gameObject"] = gameObject;
+		_data["gameObject"] = gameObject;
+		behavior = BehaviorTreeEditor.CloneTree( behavior );
 	}
 
 	void Start()
 	{
-		behavior = (BehaviorTree)ScriptableObject.Instantiate( behavior );
-		behavior.root.Init( data );
+		behavior.Init( _data );
 	}
 
 	void Update()
 	{
-		NodeStatus status = behavior.root.Tick();
-		if ( status != NodeStatus.RUNNING )
+		NodeStatus status = behavior.Tick();
+		switch ( status )
 		{
-			Debug.Log( "Behavior tree completed, root finished with value " + status );
-			Destroy( this );
+			case NodeStatus.FAILURE:
+			case NodeStatus.SUCCESS:
+				Debug.Log( "Behavior tree completed with status " + status );
+				enabled = false; // stop trying to run the behavior tree.
+				break;
 		}
 	}
 }
