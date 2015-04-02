@@ -25,6 +25,13 @@ namespace BehaviorTree
 		}
 	}
 
+	// This is a utility to optimize performance in a behavior tree.
+	//
+	// This class maintains a stack of the nodes currently being ticked
+	// and only ticks the current leaf each frame. If the leaf finishes
+	// execution it passes the return value up the stack until the stack
+	// is emptied or a node pushes more children on (signified by the
+	// RUNNING_CHILDREN status).
 	public class Subtree
 	{
 		private TreeNode _root;
