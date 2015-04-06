@@ -30,6 +30,8 @@ namespace BehaviorTree
 		// Leaf settings.
 		private const float _leafHeight = 200.0f;
 
+		private Texture _plusIcon;
+
 		/**
 		 * @brief Add a menu item in the editor for creating new behavior tree assets.
 		 *
@@ -94,6 +96,7 @@ namespace BehaviorTree
 				{
 					// Perform initial setup.
 					CreateTypeLists();
+					LoadResources();
 					BuildEditorData();
 
 					CreateGUI();
@@ -148,8 +151,15 @@ namespace BehaviorTree
 
 			EditorData childData = _editorData[decorator._child.id];
 
+			if ( DrawPlusButton( nodeData, childData ) )
+			{
+				Decorator newNode = (Decorator)CreateNodeWithParent( typeof( Succeed ), decorator );
+				newNode._child = decorator._child;
+				decorator._child = newNode;
+			}
+
 			// handle drawing the child
-			DrawNodeCurve( nodeData.nodeRect, childData.nodeRect );
+			DrawNodeCurve( nodeData.rect, childData.rect );
 			DrawNode( decorator._child );
 		}
 
@@ -158,12 +168,23 @@ namespace BehaviorTree
 			EditorData nodeData = _editorData[compositor.id];
 			CreateNodeWindow( nodeData, _nodeWidth, _compositorHeight );
 
-			foreach ( TreeNode child in compositor._children )
+			for ( int index = 0; index < compositor._children.Count; ++index )
 			{
+				TreeNode child = compositor._children[index];
 				EditorData childData = _editorData[child.id];
 
 				// handle drawing child
-				DrawNodeCurve( nodeData.nodeRect, childData.nodeRect );
+				DrawNodeCurve( nodeData.rect, childData.rect );
+
+				if ( DrawPlusButton( nodeData, childData ) )
+				{
+					Decorator newChild = (Decorator)CreateNodeWithParent( typeof( Succeed ), compositor );
+					newChild._child = child;
+					compositor._children[index] = newChild;
+
+					child = newChild;
+				}
+
 				DrawNode( child );
 			}
 		}
@@ -209,6 +230,11 @@ namespace BehaviorTree
 					} ) );
 		}
 
+		void LoadResources()
+		{
+			_plusIcon = (Texture)Resources.Load( "plus" );
+		}
+
 		#region GUI Helpers
 		Type CreateNodeTypeDropdown( TreeNode node )
 		{
@@ -218,16 +244,28 @@ namespace BehaviorTree
 			return nodeTypes[selectedType];
 		}
 
+		bool DrawPlusButton( EditorData parent, EditorData child )
+		{
+			float midX = ( ( parent.rect.x + _nodeWidth * 0.5f ) + ( child.rect.x + _nodeWidth * 0.5f ) ) * 0.5f;
+			float midY = ( ( parent.rect.y + parent.rect.height ) + child.rect.y ) * 0.5f;
+
+			Rect position = new Rect( midX - 8, midY - 8, 16, 16 );
+			GUIStyle style = new GUIStyle();
+			style.margin = new RectOffset( 0, 0, 0, 0 );
+			style.border = new RectOffset( 0, 0, 0, 0 );
+			return GUI.Button( position, _plusIcon, style );
+		}
+
 		void CreateNodeWindow( EditorData nodeData, float width, float height )
 		{
-			nodeData.nodeRect.width = width;
-			nodeData.nodeRect.height = height;
-			Rect resultRect = GUI.Window( nodeData.id, nodeData.nodeRect, DrawNodeWindow, "" );
+			nodeData.rect.width = width;
+			nodeData.rect.height = height;
+			Rect resultRect = GUI.Window( nodeData.id, nodeData.rect, DrawNodeWindow, "" );
 
 			// If the node was moved, save the change and mark the asset as dirty.
-			if ( resultRect != nodeData.nodeRect )
+			if ( resultRect != nodeData.rect )
 			{
-				nodeData.nodeRect = resultRect;
+				nodeData.rect = resultRect;
 				EditorUtility.SetDirty( _behaviorTree );
 			}
 		}
@@ -400,7 +438,7 @@ namespace BehaviorTree
 		public TreeNode node;
 		public TreeNode parent; // If this is null then the node is the root node.
 		public int parentIndex = 0; // The index of the node in the parent's _children array (only used if parent is a compositor).
-		public Rect nodeRect = new Rect( 10, 10, 100, 100 );
+		public Rect rect = new Rect( 10, 10, 100, 100 );
 		public bool foldout = true;
 
 		public EditorData( TreeNode node, TreeNode parent )
