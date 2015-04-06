@@ -350,6 +350,9 @@ namespace BehaviorTree
 
 			if ( parent is Compositor )
 			{
+				// EditorData is always created before adding the node
+				// to the parent's list of children, so we can assume its
+				// index with be _children.Count.
 				parentIndex = ( (Compositor)parent )._children.Count;
 			}
 		}
