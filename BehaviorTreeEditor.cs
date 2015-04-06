@@ -268,19 +268,22 @@ namespace BehaviorTree
 
 		void DrawNodeCurve( Rect start, Rect end )
 		{
+			float dist = Vector2.Distance( start.position, end.position );
+			float curvePower = dist * 0.25f;
+
 			Vector3 startPos = new Vector3( start.x + start.width * 0.5f, start.y + start.height, 0 );
 			Vector3 endPos = new Vector3( end.x + end.width * 0.5f, end.y, 0 );
-			Vector3 startTan = startPos + Vector3.up * 50;
-			Vector3 endTan = endPos + Vector3.down * 50;
+			Vector3 startTan = startPos + Vector3.up * curvePower;
+			Vector3 endTan = endPos + Vector3.down * curvePower;
 			Color shadowCol = new Color( 0, 0, 0, 0.06f );
 		
-			// Draw a shadow
+			// Draw a shadow.
 			for ( int i = 0; i < 3; i++ )
 			{
 				Handles.DrawBezier( startPos, endPos, startTan, endTan, shadowCol, null, ( i + 1 ) * 5 );
 			}
 
-			Handles.DrawBezier( startPos, endPos, startTan, endTan, Color.black, null, 1 );
+			Handles.DrawBezier( startPos, endPos, startTan, endTan, Color.black, null, 2 );
 		}
 		#endregion
 
