@@ -14,7 +14,7 @@ public class AIController : MonoBehaviour
 	void Awake()
 	{
 		_data["gameObject"] = gameObject;
-		behavior = BehaviorTreeEditor.CloneTree( behavior );
+		behavior = CloneTree( behavior );
 	}
 
 	void Start()
@@ -33,5 +33,34 @@ public class AIController : MonoBehaviour
 				enabled = false; // stop trying to run the behavior tree.
 				break;
 		}
+	}
+
+	static BehaviorTree.BehaviorTree CloneTree( BehaviorTree.BehaviorTree behaviorTree )
+	{
+		BehaviorTree.BehaviorTree treeClone = Instantiate<BehaviorTree.BehaviorTree>( behaviorTree );
+		treeClone.root = CloneNode( behaviorTree.root );
+		return treeClone;
+	}
+
+	static TreeNode CloneNode( TreeNode node )
+	{
+		TreeNode nodeClone = Instantiate<TreeNode>( node );
+
+		if ( node is Decorator )
+		{
+			( (Decorator)nodeClone )._child = CloneNode( ( (Decorator)node )._child );
+		}
+		else if ( node is Compositor )
+		{
+			List<TreeNode> cloneChildren = new List<TreeNode>();
+			foreach ( TreeNode child in( (Compositor)node )._children )
+			{
+				cloneChildren.Add( (TreeNode)CloneNode( child ) );
+			}
+
+			( (Compositor)nodeClone )._children = cloneChildren;
+		}
+
+		return nodeClone;
 	}
 }
