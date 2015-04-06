@@ -192,7 +192,21 @@ namespace BehaviorTree
 					.Where( type => type.IsSubclassOf( typeof( TreeNode ) ) && !type.IsAbstract ).ToArray<Type>();
 			nodeTypeNames = Array.ConvertAll<Type, String>( nodeTypes,
 				new Converter<Type, String> (
-					delegate( Type type ) { return type.Name; } ) );
+					delegate( Type type )
+					{
+						if ( type.IsSubclassOf( typeof( Decorator ) ) )
+						{
+							return "Decorators/" + type.Name;
+						}
+						else if ( type.IsSubclassOf( typeof( Compositor ) ) )
+						{
+							return "Compositors/" + type.Name;
+						}
+						else
+						{
+							return "Leaves/" + type.Name;
+						}
+					} ) );
 		}
 
 		#region GUI Helpers
