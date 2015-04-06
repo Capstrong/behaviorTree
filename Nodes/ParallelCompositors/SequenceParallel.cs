@@ -19,7 +19,7 @@ namespace BehaviorTree
 			DebugUtils.Assert( childStatus == NodeStatus.SUCCESS );
 
 			int successes = 0;
-			foreach ( Subtree subtree in _subtrees )
+			foreach ( ExecutionStack subtree in _subtrees )
 			{
 				switch ( subtree.Tick() )
 				{
