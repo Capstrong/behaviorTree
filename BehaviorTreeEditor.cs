@@ -196,7 +196,7 @@ namespace BehaviorTree
 		}
 
 		#region GUI Helpers
-		public Type CreateNodeTypeSelector( TreeNode node )
+		public Type CreateNodeTypeDropdown( TreeNode node )
 		{
 			int selectedType = ( node != null ? Array.IndexOf<Type>( nodeTypes, node.GetType() ) : Array.IndexOf<Type>( nodeTypes, typeof( NullNode ) ) );
 			Rect rect = new Rect( 0, 0, _nodeWidth - 40.0f, 20.0f );
@@ -224,7 +224,7 @@ namespace BehaviorTree
 			EditorData nodeData = _editorData[id];
 			TreeNode node = nodeData.node;
 
-			Type selectedType = CreateNodeTypeSelector( node );
+			Type selectedType = CreateNodeTypeDropdown( node );
 			if ( selectedType != node.GetType() )
 			{
 				ReplaceNode( nodeData, selectedType );
