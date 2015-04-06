@@ -23,6 +23,35 @@ namespace BehaviorTree
 		{
 			return _executionStack.Tick();
 		}
+
+		public static BehaviorTree CloneTree( BehaviorTree behaviorTree )
+		{
+			BehaviorTree treeClone = Instantiate<BehaviorTree>( behaviorTree );
+			treeClone.root = CloneNode( behaviorTree.root );
+			return treeClone;
+		}
+
+		static TreeNode CloneNode( TreeNode node )
+		{
+			TreeNode nodeClone = Instantiate<TreeNode>( node );
+
+			if ( node is Decorator )
+			{
+				( (Decorator)nodeClone )._child = CloneNode( ( (Decorator)node )._child );
+			}
+			else if ( node is Compositor )
+			{
+				List<TreeNode> cloneChildren = new List<TreeNode>();
+				foreach ( TreeNode child in( (Compositor)node )._children )
+				{
+					cloneChildren.Add( (TreeNode)CloneNode( child ) );
+				}
+
+				( (Compositor)nodeClone )._children = cloneChildren;
+			}
+
+			return nodeClone;
+		}
 	}
 
 	// This is a utility to optimize performance in a behavior tree.

@@ -114,7 +114,7 @@ namespace BehaviorTree
 
 		void DrawNode( TreeNode node )
 		{
-			if ( node == null )
+			if ( !node )
 			{
 				Debug.LogError( "Node is null!" );
 				return;
@@ -192,11 +192,11 @@ namespace BehaviorTree
 					.Where( type => type.IsSubclassOf( typeof( TreeNode ) ) && !type.IsAbstract ).ToArray<Type>();
 			nodeTypeNames = Array.ConvertAll<Type, String>( nodeTypes,
 				new Converter<Type, String> (
-					delegate( Type type ) { return DisplayName( type.ToString() ); } ) );
+					delegate( Type type ) { return type.Name; } ) );
 		}
 
 		#region GUI Helpers
-		public Type CreateNodeTypeDropdown( TreeNode node )
+		Type CreateNodeTypeDropdown( TreeNode node )
 		{
 			int selectedType = ( node != null ? Array.IndexOf<Type>( nodeTypes, node.GetType() ) : Array.IndexOf<Type>( nodeTypes, typeof( NullNode ) ) );
 			Rect rect = new Rect( 0, 0, _nodeWidth - 40.0f, 20.0f );
@@ -272,7 +272,7 @@ namespace BehaviorTree
 
 		#region Create and Destroy Nodes
 		// NOTE: Do NOT call this directly! It's a only helper function for the other CreateNode...() methods.
-		public TreeNode CreateNode( Type nodeType )
+		TreeNode CreateNode( Type nodeType )
 		{
 			DebugUtils.Assert( _behaviorTree, "Can't create a node without an asset to add it to!" );
 
@@ -285,7 +285,7 @@ namespace BehaviorTree
 			return newNode;
 		}
 
-		public TreeNode CreateNodeWithParent( Type nodeType, TreeNode parent )
+		TreeNode CreateNodeWithParent( Type nodeType, TreeNode parent )
 		{
 			TreeNode newNode = CreateNode( nodeType );
 			_behaviorTree._editorData.Add( new EditorData( newNode, parent ) );
@@ -293,7 +293,7 @@ namespace BehaviorTree
 			return newNode;
 		}
 
-		public TreeNode CreateNodeWithoutParent( Type nodeType )
+		TreeNode CreateNodeWithoutParent( Type nodeType )
 		{
 			TreeNode newNode = CreateNode( nodeType );
 			_behaviorTree._editorData.Add( new EditorData( newNode, null ) );
@@ -301,7 +301,7 @@ namespace BehaviorTree
 			return newNode;
 		}
 
-		public TreeNode CreateNodeWithExistingData( Type nodeType, EditorData nodeData )
+		TreeNode CreateNodeWithExistingData( Type nodeType, EditorData nodeData )
 		{
 			TreeNode newNode = CreateNode( nodeType );
 
@@ -318,7 +318,7 @@ namespace BehaviorTree
 			return newNode;
 		}
 		
-		public void DeleteNode( TreeNode node )
+		void DeleteNode( TreeNode node )
 		{
 			if ( node is Decorator )
 			{
@@ -371,35 +371,6 @@ namespace BehaviorTree
 			}
 		}
 		#endregion
-
-		public static BehaviorTree CloneTree( BehaviorTree behaviorTree )
-		{
-			BehaviorTree treeClone = Instantiate<BehaviorTree>( behaviorTree );
-			treeClone.root = CloneNode( behaviorTree.root );
-			return treeClone;
-		}
-
-		public static TreeNode CloneNode( TreeNode node )
-		{
-			TreeNode nodeClone = Instantiate<TreeNode>( node );
-
-			if ( node is Decorator )
-			{
-				( (Decorator)nodeClone )._child = CloneNode( ( (Decorator)node )._child );
-			}
-			else if ( node is Compositor )
-			{
-				List<TreeNode> cloneChildren = new List<TreeNode>();
-				foreach ( TreeNode child in ( (Compositor)node )._children )
-				{
-					cloneChildren.Add( (TreeNode)CloneNode( child ) );
-				}
-
-				( (Compositor)nodeClone )._children = cloneChildren;
-			}
-
-			return nodeClone;
-		}
 	}
 }
 #endif
@@ -408,8 +379,12 @@ namespace BehaviorTree
 	[Serializable]
 	public class EditorData
 	{
-		// NOTE: This should not be called directly.
-		//public EditorData() { }
+		public int id = 0;
+		public TreeNode node;
+		public TreeNode parent; // If this is null then the node is the root node.
+		public int parentIndex = 0; // The index of the node in the parent's _children array (only used if parent is a compositor).
+		public Rect nodeRect = new Rect( 10, 10, 100, 100 );
+		public bool foldout = true;
 
 		public EditorData( TreeNode node, TreeNode parent )
 		{
@@ -419,15 +394,11 @@ namespace BehaviorTree
 
 			if ( parent is Compositor )
 			{
+				// EditorData is always created before adding the node
+				// to the parent's list of children, so we can assume its
+				// index with be _children.Count.
 				parentIndex = ( (Compositor)parent )._children.Count;
 			}
 		}
-
-		public int id = 0;
-		public TreeNode node;
-		public TreeNode parent; // If this is null then the node is the root node.
-		public int parentIndex = 0; // The index of the node in the parent's _children array (only used if parent is a compositor).
-		public Rect nodeRect = new Rect( 10, 10, 100, 100 );
-		public bool foldout = true;
 	}
 }

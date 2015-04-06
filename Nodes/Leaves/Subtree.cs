@@ -9,7 +9,7 @@ namespace BehaviorTree
 
 		public override void InitSelf( Hashtable data )
 		{
-			behaviorTree = BehaviorTreeEditor.CloneTree( behaviorTree );
+			behaviorTree = BehaviorTree.CloneTree( behaviorTree );
 			behaviorTree.Init( data );
 		}
 
