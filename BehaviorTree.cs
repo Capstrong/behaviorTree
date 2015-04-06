@@ -11,6 +11,8 @@ namespace BehaviorTree
 
 		private Subtree _subtree;
 
+		public List<EditorData> _editorData = new List<EditorData>();
+
 		public void Init( Hashtable data )
 		{
 			_subtree = new Subtree( root );

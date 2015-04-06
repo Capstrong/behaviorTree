@@ -14,6 +14,8 @@ namespace BehaviorTree
 
 	public abstract class TreeNode : ScriptableObject
 	{
+		public int id;
+
 		public abstract TreeNode Init( Hashtable data );
 
 		/**
