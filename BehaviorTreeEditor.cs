@@ -31,6 +31,8 @@ namespace BehaviorTree
 		private const float _leafHeight = 200.0f;
 
 		private Texture _plusIcon;
+		private Texture _leftIcon;
+		private Texture _rightIcon;
 
 		/**
 		 * @brief Add a menu item in the editor for creating new behavior tree assets.
@@ -115,6 +117,7 @@ namespace BehaviorTree
 			EndWindows();
 		}
 
+		#region Draw Nodes
 		void DrawNode( TreeNode node )
 		{
 			if ( !node )
@@ -185,6 +188,43 @@ namespace BehaviorTree
 					child = newChild;
 				}
 
+				if ( index > 0 && DrawLeftButton( childData ) )
+				{
+					// Swap the order of the children in the array.
+					TreeNode tempChild = compositor._children[index - 1];
+					compositor._children[index - 1] = child;
+					compositor._children[index] = tempChild;
+
+					// Swap the positions of the two children.
+					EditorData tempChildData = _editorData[tempChild.id];
+					Vector2 tempPosition = tempChildData.rect.position;
+					tempChildData.rect.position = childData.rect.position;
+					childData.rect.position = tempPosition;
+
+					// Update EditorData indices.
+					tempChildData.parentIndex = index;
+					childData.parentIndex = index - 1;
+
+				}
+
+				if ( index < compositor._children.Count - 1 && DrawRightButton( childData ) )
+				{
+					// Swap the order of the children in the array.
+					TreeNode tempChild = compositor._children[index + 1];
+					compositor._children[index + 1] = child;
+					compositor._children[index] = tempChild;
+
+					// Swap the positions of the two children.
+					EditorData tempChildData = _editorData[tempChild.id];
+					Vector2 tempPosition = tempChildData.rect.position;
+					tempChildData.rect.position = childData.rect.position;
+					childData.rect.position = tempPosition;
+
+					// Update EditorData indices.
+					tempChildData.parentIndex = index;
+					childData.parentIndex = index + 1;
+				}
+
 				DrawNode( child );
 			}
 		}
@@ -194,17 +234,9 @@ namespace BehaviorTree
 			EditorData nodeData = _editorData[leaf.id];
 			CreateNodeWindow( nodeData, _nodeWidth, _leafHeight );
 		}
+		#endregion
 
-		static string DisplayName( string name )
-		{
-			if ( name.Contains( '.' ) )
-			{
-				string[] tokens = name.Split( '.' );
-				return tokens[tokens.Length - 1];
-			}
-			return name;
-		}
-
+		#region Startup Helpers
 		void CreateTypeLists()
 		{
 			// get list of possible node types
@@ -233,7 +265,10 @@ namespace BehaviorTree
 		void LoadResources()
 		{
 			_plusIcon = (Texture)Resources.Load( "plus" );
+			_leftIcon = (Texture)Resources.Load( "arrow_left" );
+			_rightIcon = (Texture)Resources.Load( "arrow_right" );
 		}
+		#endregion
 
 		#region GUI Helpers
 		Type CreateNodeTypeDropdown( TreeNode node )
@@ -249,11 +284,33 @@ namespace BehaviorTree
 			float midX = ( ( parent.rect.x + _nodeWidth * 0.5f ) + ( child.rect.x + _nodeWidth * 0.5f ) ) * 0.5f;
 			float midY = ( ( parent.rect.y + parent.rect.height ) + child.rect.y ) * 0.5f;
 
-			Rect position = new Rect( midX - 8, midY - 8, 16, 16 );
+			Rect position = new Rect( midX + 2, midY - 8, 16, 16 );
 			GUIStyle style = new GUIStyle();
 			style.margin = new RectOffset( 0, 0, 0, 0 );
 			style.border = new RectOffset( 0, 0, 0, 0 );
 			return GUI.Button( position, _plusIcon, style );
+		}
+
+		bool DrawLeftButton( EditorData child )
+		{
+			float left = child.rect.x - 18;
+			float top = child.rect.y;
+			Rect position = new Rect( left, top, 16, 16 );
+			GUIStyle style = new GUIStyle();
+			style.margin = new RectOffset( 0, 0, 0, 0 );
+			style.border = new RectOffset( 0, 0, 0, 0 );
+			return GUI.Button( position, _leftIcon, style );
+		}
+
+		bool DrawRightButton( EditorData child )
+		{
+			float left = child.rect.x - 18;
+			float top = child.rect.y + ( child.parentIndex == 0 ? 0 : 18 );
+			Rect position = new Rect( left, top, 16, 16 );
+			GUIStyle style = new GUIStyle();
+			style.margin = new RectOffset( 0, 0, 0, 0 );
+			style.border = new RectOffset( 0, 0, 0, 0 );
+			return GUI.Button( position, _rightIcon, style );
 		}
 
 		void CreateNodeWindow( EditorData nodeData, float width, float height )
