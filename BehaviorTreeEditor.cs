@@ -197,7 +197,7 @@ namespace BehaviorTree
 					SwapCompositorChildren( compositor, index, index + 1 );
 				}
 
-				DrawNodeCurve( nodeData.rect, childData.rect );
+				DrawNodeCurve( nodeData.rect, childData.rect, index, compositor._children.Count );
 				DrawNode( child );
 			}
 		}
@@ -336,11 +336,36 @@ namespace BehaviorTree
 
 		void DrawNodeCurve( Rect start, Rect end )
 		{
-			float dist = Vector2.Distance( start.position, end.position );
-			float curvePower = dist * 0.25f;
-
 			Vector3 startPos = new Vector3( start.x + start.width * 0.5f, start.y + start.height, 0 );
 			Vector3 endPos = new Vector3( end.x + end.width * 0.5f, end.y, 0 );
+			
+			DrawNodeCurve( startPos, endPos );
+		}
+
+		/// <summary>
+		/// Draws the bezier curve between two nodes, offsetting the starting node
+		/// based on the number of children nodes and the index of the current child.
+		/// </summary>
+		/// <param name="start">A Rect describing the position of the starting node.</param>
+		/// <param name="end">A Rect describing the position of the ending node.</param>
+		/// <param name="index">The index of the end node in the parent node's children array.</param>
+		/// <param name="count">The total number of children that the parent node has.</param>
+		void DrawNodeCurve( Rect start, Rect end, int index, int count )
+		{
+			float incrementSize = start.width / count;
+			float startX = start.x + incrementSize * index + incrementSize * 0.5f;
+			Vector3 startPos = new Vector3( startX, start.y + start.height, 0 );
+			Vector3 endPos = new Vector3( end.x + end.width * 0.5f, end.y, 0 );
+			
+			DrawNodeCurve( startPos, endPos );
+		}
+
+		void DrawNodeCurve( Vector3 startPos, Vector3 endPos )
+		{
+			// Calculate tangents.
+			float dist = Vector3.Distance( startPos, endPos );
+			float curvePower = dist * 0.25f;
+
 			Vector3 startTan = startPos + Vector3.up * curvePower;
 			Vector3 endTan = endPos + Vector3.down * curvePower;
 			Color shadowCol = new Color( 0, 0, 0, 0.06f );
@@ -492,8 +517,8 @@ namespace BehaviorTree
 	{
 		public int id = 0;
 		public TreeNode node;
-		public TreeNode parent; // If this is null then the node is the root node.
-		public int parentIndex = 0; // The index of the node in the parent's _children array (only used if parent is a compositor).
+		public TreeNode parent; /// If this is null then the node is the root node.
+		public int parentIndex = 0; /// The index of the node in the parent's _children array (only used if parent is a compositor).
 		public Rect rect = new Rect( 10, 10, 100, 100 );
 		public bool foldout = true;
 
