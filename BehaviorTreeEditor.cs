@@ -176,9 +176,6 @@ namespace BehaviorTree
 				TreeNode child = compositor._children[index];
 				EditorData childData = _editorData[child.id];
 
-				// handle drawing child
-				DrawNodeCurve( nodeData.rect, childData.rect );
-
 				if ( DrawPlusButton( nodeData, childData ) )
 				{
 					Decorator newChild = (Decorator)CreateNodeWithParent( typeof( Succeed ), compositor );
@@ -188,43 +185,19 @@ namespace BehaviorTree
 					child = newChild;
 				}
 
-				if ( index > 0 && DrawLeftButton( childData ) )
+				if ( index > 0 &&
+				     DrawLeftButton( childData ) )
 				{
-					// Swap the order of the children in the array.
-					TreeNode tempChild = compositor._children[index - 1];
-					compositor._children[index - 1] = child;
-					compositor._children[index] = tempChild;
-
-					// Swap the positions of the two children.
-					EditorData tempChildData = _editorData[tempChild.id];
-					Vector2 tempPosition = tempChildData.rect.position;
-					tempChildData.rect.position = childData.rect.position;
-					childData.rect.position = tempPosition;
-
-					// Update EditorData indices.
-					tempChildData.parentIndex = index;
-					childData.parentIndex = index - 1;
-
+					SwapCompositorChildren( compositor, index, index - 1 );
 				}
 
-				if ( index < compositor._children.Count - 1 && DrawRightButton( childData ) )
+				if ( index < compositor._children.Count - 1 &&
+				     DrawRightButton( childData ) )
 				{
-					// Swap the order of the children in the array.
-					TreeNode tempChild = compositor._children[index + 1];
-					compositor._children[index + 1] = child;
-					compositor._children[index] = tempChild;
-
-					// Swap the positions of the two children.
-					EditorData tempChildData = _editorData[tempChild.id];
-					Vector2 tempPosition = tempChildData.rect.position;
-					tempChildData.rect.position = childData.rect.position;
-					childData.rect.position = tempPosition;
-
-					// Update EditorData indices.
-					tempChildData.parentIndex = index;
-					childData.parentIndex = index + 1;
+					SwapCompositorChildren( compositor, index, index + 1 );
 				}
 
+				DrawNodeCurve( nodeData.rect, childData.rect );
 				DrawNode( child );
 			}
 		}
@@ -481,6 +454,32 @@ namespace BehaviorTree
 				// Node is root node.
 				_behaviorTree.root = nodeData.node;
 			}
+		}
+		#endregion
+
+		#region General Utilities
+		void SwapCompositorChildren( Compositor compositor, int firstIndex, int secondIndex )
+		{
+			// Retrieve nodes and editor data.
+			TreeNode first = compositor._children[firstIndex];
+			EditorData childData = _editorData[first.id];
+
+			TreeNode second = compositor._children[secondIndex];
+			EditorData secondData = _editorData[second.id];
+
+			// Swap the order of the children in the array.
+			compositor._children[secondIndex] = first;
+			compositor._children[firstIndex] = second;
+
+			// Swap the positions of the two children's nodes.
+			// TODO: Move the entire subtree under each node by the same amount.
+			Vector2 tempPosition = secondData.rect.position;
+			secondData.rect.position = childData.rect.position;
+			childData.rect.position = tempPosition;
+
+			// Update EditorData indices.
+			secondData.parentIndex = firstIndex;
+			childData.parentIndex = secondIndex;
 		}
 		#endregion
 	}
