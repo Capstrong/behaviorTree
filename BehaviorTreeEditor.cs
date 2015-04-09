@@ -83,16 +83,18 @@ namespace BehaviorTree
 
 		void OnGUI()
 		{
+			// Create a box for selecting the behavior tree.
+			// Ironically, this has to be outside of the try-catch
+			// otherwise we'll get uncaught exceptions.
+			_behaviorTree =
+				(BehaviorTree)EditorGUILayout.ObjectField(
+					"Behavior Tree",
+					_behaviorTree,
+					typeof( BehaviorTree ),
+					false );
+
 			try
 			{
-				// always create a box for selecting the behavior tree
-				_behaviorTree =
-					(BehaviorTree)EditorGUILayout.ObjectField(
-						"Behavior Tree",
-						_behaviorTree,
-						typeof( BehaviorTree ),
-						false );
-
 				// only draw editor if a behavior tree is selected
 				if ( _behaviorTree )
 				{
