@@ -30,6 +30,9 @@ namespace BehaviorTree
 		// Leaf settings.
 		private const float _leafHeight = 200.0f;
 
+		// General settings.
+		private static Vector2 offset = Vector2.zero;
+
 		private Texture _plusIcon;
 		private Texture _leftIcon;
 		private Texture _rightIcon;
@@ -41,7 +44,7 @@ namespace BehaviorTree
 		 *     Create new asset in currently selected folder of the project view,
 		 *     rather than always placing them in the root Assets folder.
 		 *
-		 * @todol
+		 * @todo
 		 *     Check if asset already exists, because by default the AssetDatabase
 		 *     will overwrite an existing asset of the same name.
 		 */
@@ -53,7 +56,7 @@ namespace BehaviorTree
 			AssetDatabase.CreateAsset( behaviorTreeAsset, "Assets/NewBehaviorTree.asset" );
 
 			// Add root node to behavior tree.
-			TreeNode newNode = (TreeNode)ScriptableObject.CreateInstance( typeof( NullNode ) );
+			TreeNode newNode = ScriptableObject.CreateInstance<NullNode>();
 			newNode.id = newNode.GetInstanceID(); // generate a unique ID for the node.
 			behaviorTreeAsset._editorData.Add( new EditorData( newNode, null ) );
 			behaviorTreeAsset.root = newNode;
@@ -115,6 +118,14 @@ namespace BehaviorTree
 		void CreateGUI()
 		{
 			BeginWindows();
+
+			// Handle dragging the mouse in the background.
+			if ( Event.current.type == EventType.MouseDrag )
+			{
+				offset += Event.current.delta;
+				Repaint();
+			}
+
 			DrawNode( _behaviorTree.root );
 			EndWindows();
 		}
@@ -259,40 +270,44 @@ namespace BehaviorTree
 			float midX = ( ( parent.rect.x + _nodeWidth * 0.5f ) + ( child.rect.x + _nodeWidth * 0.5f ) ) * 0.5f;
 			float midY = ( ( parent.rect.y + parent.rect.height ) + child.rect.y ) * 0.5f;
 
-			Rect position = new Rect( midX + 2, midY - 8, 16, 16 );
-			GUIStyle style = new GUIStyle();
-			style.margin = new RectOffset( 0, 0, 0, 0 );
-			style.border = new RectOffset( 0, 0, 0, 0 );
-			return GUI.Button( position, _plusIcon, style );
+			return DrawEditorButton( new Vector2( midX + 2, midY - 8 ), _plusIcon );
 		}
 
 		bool DrawLeftButton( EditorData child )
 		{
 			float left = child.rect.x - 18;
 			float top = child.rect.y;
-			Rect position = new Rect( left, top, 16, 16 );
-			GUIStyle style = new GUIStyle();
-			style.margin = new RectOffset( 0, 0, 0, 0 );
-			style.border = new RectOffset( 0, 0, 0, 0 );
-			return GUI.Button( position, _leftIcon, style );
+			return DrawEditorButton( new Vector2( left, top ), _leftIcon );
 		}
 
 		bool DrawRightButton( EditorData child )
 		{
 			float left = child.rect.x - 18;
 			float top = child.rect.y + ( child.parentIndex == 0 ? 0 : 18 );
-			Rect position = new Rect( left, top, 16, 16 );
+			Vector2 position = new Vector2( left, top );
+
+			return DrawEditorButton( position, _rightIcon );
+		}
+
+		bool DrawEditorButton( Vector2 position, Texture icon )
+		{
+			position += offset;
+
 			GUIStyle style = new GUIStyle();
 			style.margin = new RectOffset( 0, 0, 0, 0 );
 			style.border = new RectOffset( 0, 0, 0, 0 );
-			return GUI.Button( position, _rightIcon, style );
+			return GUI.Button( new Rect( position.x, position.y, 16.0f, 16.0f ), icon, style );
 		}
 
 		void CreateNodeWindow( EditorData nodeData, float width, float height )
 		{
 			nodeData.rect.width = width;
 			nodeData.rect.height = height;
-			Rect resultRect = GUI.Window( nodeData.id, nodeData.rect, DrawNodeWindow, "" );
+
+			Rect tempRect = nodeData.rect;
+			tempRect.position += offset;
+			Rect resultRect = GUI.Window( nodeData.id, tempRect, DrawNodeWindow, "" );
+			resultRect.position -= offset;
 
 			// If the node was moved, save the change and mark the asset as dirty.
 			if ( resultRect != nodeData.rect )
@@ -364,6 +379,9 @@ namespace BehaviorTree
 
 		void DrawNodeCurve( Vector3 startPos, Vector3 endPos )
 		{
+			startPos += new Vector3( offset.x, offset.y, 0.0f );
+			endPos += new Vector3( offset.x, offset.y, 0.0f );
+
 			// Calculate tangents.
 			float dist = Vector3.Distance( startPos, endPos );
 			float curvePower = dist * 0.25f;
@@ -383,7 +401,11 @@ namespace BehaviorTree
 		#endregion
 
 		#region Create and Destroy Nodes
-		// NOTE: Do NOT call this directly! It's a only helper function for the other CreateNode...() methods.
+		/// <summary>
+		/// Do NOT call this directly! It's a only helper function for the other node creation methods.
+		/// </summary>
+		/// <param name="nodeType"></param>
+		/// <returns></returns>
 		TreeNode CreateNode( Type nodeType )
 		{
 			DebugUtils.Assert( _behaviorTree, "Can't create a node without an asset to add it to!" );
