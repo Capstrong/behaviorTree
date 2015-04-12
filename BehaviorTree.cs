@@ -9,19 +9,48 @@ namespace BehaviorTree
 	{
 		public TreeNode root;
 
-		private Subtree _subtree;
+		private ExecutionStack _executionStack;
 
 		public List<EditorData> _editorData = new List<EditorData>();
 
 		public void Init( Hashtable data )
 		{
-			_subtree = new Subtree( root );
-			_subtree.Start( data );
+			_executionStack = new ExecutionStack( root );
+			_executionStack.Start( data );
 		}
 
 		public NodeStatus Tick()
 		{
-			return _subtree.Tick();
+			return _executionStack.Tick();
+		}
+
+		public static BehaviorTree CloneTree( BehaviorTree behaviorTree )
+		{
+			BehaviorTree treeClone = Instantiate<BehaviorTree>( behaviorTree );
+			treeClone.root = CloneNode( behaviorTree.root );
+			return treeClone;
+		}
+
+		static TreeNode CloneNode( TreeNode node )
+		{
+			TreeNode nodeClone = Instantiate<TreeNode>( node );
+
+			if ( node is Decorator )
+			{
+				( (Decorator)nodeClone )._child = CloneNode( ( (Decorator)node )._child );
+			}
+			else if ( node is Compositor )
+			{
+				List<TreeNode> cloneChildren = new List<TreeNode>();
+				foreach ( TreeNode child in( (Compositor)node )._children )
+				{
+					cloneChildren.Add( (TreeNode)CloneNode( child ) );
+				}
+
+				( (Compositor)nodeClone )._children = cloneChildren;
+			}
+
+			return nodeClone;
 		}
 	}
 
@@ -32,14 +61,14 @@ namespace BehaviorTree
 	// execution it passes the return value up the stack until the stack
 	// is emptied or a node pushes more children on (signified by the
 	// RUNNING_CHILDREN status).
-	public class Subtree
+	public class ExecutionStack
 	{
 		private TreeNode _root;
 
 		private Hashtable _data;
 		private Stack<TreeNode> _executionStack = new Stack<TreeNode>();
 
-		public Subtree( TreeNode root )
+		public ExecutionStack( TreeNode root )
 		{
 			this._root = root;
 		}

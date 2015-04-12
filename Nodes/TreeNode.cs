@@ -14,6 +14,7 @@ namespace BehaviorTree
 
 	public abstract class TreeNode : ScriptableObject
 	{
+		[HideInInspector]
 		public int id;
 
 		public abstract TreeNode Init( Hashtable data );
@@ -43,7 +44,7 @@ namespace BehaviorTree
 
 	public abstract class Parallel : Compositor
 	{
-		public List<Subtree> _subtrees = new List<Subtree>();
+		public List<ExecutionStack> _subtrees = new List<ExecutionStack>();
 
 		public override TreeNode Init( Hashtable data )
 		{
@@ -51,15 +52,15 @@ namespace BehaviorTree
 			{
 				// If we don't have the right number of subtrees,
 				// recreate the subtree list.
-				_subtrees = new List<Subtree>();
+				_subtrees = new List<ExecutionStack>();
 				foreach ( TreeNode child in _children )
 				{
-					Subtree subtree = new Subtree( child );
+					ExecutionStack subtree = new ExecutionStack( child );
 					_subtrees.Add( subtree );
 				}
 			}
 
-			foreach ( Subtree subtree in _subtrees )
+			foreach ( ExecutionStack subtree in _subtrees )
 			{
 				subtree.Start( data );
 			}
