@@ -186,6 +186,8 @@ namespace BehaviorTree
 					newChild._child = child;
 					compositor._children[index] = newChild;
 
+					_editorData[newChild.id].parentIndex = index;
+
 					child = newChild;
 				}
 
@@ -346,6 +348,14 @@ namespace BehaviorTree
 			}
 			else if ( node is LeafNode )
 			{
+				if ( node == null )
+				{
+					// Passing null to Editor.CreateEditor() causes the whole editor to hard crash,
+					// so we throw an exception to keep that from happening. node should never be
+					// null in this case, anyway, but if it is we don't want the whole editor to shut down.
+					throw new NullReferenceException();
+				}
+
 				Editor editor = Editor.CreateEditor( node );
 				editor.OnInspectorGUI();
 			}
@@ -440,30 +450,13 @@ namespace BehaviorTree
 			return newNode;
 		}
 
-		TreeNode CreateNodeWithExistingData( Type nodeType, EditorData nodeData )
+		void DeleteNode( TreeNode node, bool deleteEditorData = true )
 		{
-			TreeNode newNode = CreateNode( nodeType );
-
-			// Use ID of new node, rather than reusing old node
-			nodeData.id = newNode.id;
-
-			// Give node data a reference to the new node
-			nodeData.node = newNode;
-
-			// Put new node back in the dict.
-			_behaviorTree._editorData.Add( nodeData );
-			BuildEditorData();
-
-			return newNode;
-		}
-		
-		void DeleteNode( TreeNode node )
-		{
-			if ( node is Decorator )
+			if ( node is Decorator && ( (Decorator)node )._child )
 			{
 				DeleteNode( ( (Decorator)node )._child );
 			}
-			else if ( node is Compositor )
+			else if ( node is Compositor && ( (Compositor)node )._children != null )
 			{
 				foreach ( TreeNode child in ( (Compositor)node )._children )
 				{
@@ -471,19 +464,39 @@ namespace BehaviorTree
 				}
 			}
 
-			// Remove the editor data from the list held by the behavior tree.
-			_behaviorTree._editorData.Remove( _editorData[node.id] );
+			if ( deleteEditorData )
+			{
+				// Remove the editor data from the list held by the behavior tree.
+				_behaviorTree._editorData.Remove( _editorData[node.id] );
 
-			// Remove the data from the local dict.
-			_editorData.Remove( node.id );
+				// Remove the data from the local dict.
+				_editorData.Remove( node.id );
+			}
 
 			DestroyImmediate( node, true );
 		}
 
 		void ReplaceNode( EditorData nodeData, Type newType )
 		{
-			DeleteNode( nodeData.node );
-			CreateNodeWithExistingData( newType, nodeData );
+			TreeNode oldNode = nodeData.node;
+			TreeNode newNode = CreateNode( newType );
+
+			// Transfer editor data.
+			newNode.id = nodeData.id;
+			nodeData.node = newNode;
+
+			// Swap children, then delete old node.
+			if ( oldNode is Decorator && newNode is Decorator )
+			{
+				( (Decorator)newNode )._child = ( (Decorator)oldNode )._child;
+				( (Decorator)oldNode )._child = null;
+			}
+			else if ( oldNode is Compositor && newNode is Compositor )
+			{
+				( (Compositor)newNode )._children = ( (Compositor)oldNode )._children;
+				( (Compositor)oldNode )._children = null;
+			}
+			DeleteNode( oldNode, false );
 
 			// Update parent's reference to the node.
 			if ( nodeData.parent )
@@ -508,6 +521,10 @@ namespace BehaviorTree
 				// Node is root node.
 				_behaviorTree.root = nodeData.node;
 			}
+
+			// Editor data will have changed, so we must rebuild
+			// it before continuing with rendering the GUI.
+			BuildEditorData();
 		}
 		#endregion
 
