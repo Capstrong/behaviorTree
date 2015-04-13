@@ -12,6 +12,7 @@ namespace BehaviorTree
 		private ExecutionStack _executionStack;
 
 		public List<EditorData> _editorData = new List<EditorData>();
+		public Vector2 _editorOffset = Vector2.zero;
 
 		public void Init( Hashtable data )
 		{

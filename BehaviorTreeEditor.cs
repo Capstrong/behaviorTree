@@ -74,16 +74,6 @@ namespace BehaviorTree
 			EditorWindow.GetWindow<BehaviorTreeEditor>();
 		}
 
-		void BuildEditorData()
-		{
-			_editorData.Clear();
-
-			foreach ( EditorData editorData in _behaviorTree._editorData )
-			{
-				_editorData.Add( editorData.id, editorData );
-			}
-		}
-
 		void OnGUI()
 		{
 			// Create a box for selecting the behavior tree.
@@ -123,6 +113,7 @@ namespace BehaviorTree
 			if ( Event.current.type == EventType.MouseDrag )
 			{
 				offset += Event.current.delta;
+				_behaviorTree._editorOffset = offset;
 				Repaint();
 			}
 
@@ -253,6 +244,18 @@ namespace BehaviorTree
 			_plusIcon = (Texture)Resources.Load( "plus" );
 			_leftIcon = (Texture)Resources.Load( "arrow_left" );
 			_rightIcon = (Texture)Resources.Load( "arrow_right" );
+		}
+
+		void BuildEditorData()
+		{
+			_editorData.Clear();
+
+			foreach ( EditorData editorData in _behaviorTree._editorData )
+			{
+				_editorData.Add( editorData.id, editorData );
+			}
+
+			offset = _behaviorTree._editorOffset;
 		}
 		#endregion
 
@@ -422,7 +425,9 @@ namespace BehaviorTree
 		TreeNode CreateNodeWithParent( Type nodeType, TreeNode parent )
 		{
 			TreeNode newNode = CreateNode( nodeType );
-			_behaviorTree._editorData.Add( new EditorData( newNode, parent ) );
+			EditorData nodeData = new EditorData( newNode, parent );
+			nodeData.rect.position = _editorData[parent.id].rect.position + new Vector2( 0.0f, 100.0f );
+			_behaviorTree._editorData.Add( nodeData );
 			BuildEditorData();
 			return newNode;
 		}
