@@ -1,11 +1,12 @@
-﻿#if UNITY_EDITOR
-using UnityEngine;
-using UnityEditor;
+﻿using UnityEngine;
 using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
+
+#if UNITY_EDITOR
+using UnityEditor;
 
 namespace BehaviorTree
 {
