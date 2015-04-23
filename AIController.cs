@@ -16,11 +16,11 @@ namespace BehaviorTree
 		void Awake()
 		{
 			_data["gameObject"] = gameObject;
-			behavior = BehaviorTree.CloneTree( behavior );
 		}
 
 		void Start()
 		{
+			behavior = BehaviorTree.CloneTree( behavior );
 			behavior.Init( _data );
 		}
 
